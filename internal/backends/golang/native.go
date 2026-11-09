@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/trace"
 )
 
 // afterRunnableSnapshotForTest moves source between native capture and the
@@ -18,7 +20,14 @@ var afterRunnableSnapshotForTest func()
 // groupSnapshot observes one compilation generation. Runtime bindings and every
 // independently closing attempt share these immutable source/build facts.
 func groupSnapshot(ctx context.Context, root string, g *captureGroup) (*witnessSnapshot, *pgoObservation, error) {
+	gsStart := time.Now()
 	prepared, err := prepareWitnessGeneration(ctx, root, g)
+	trace.Emit(ctx, trace.DomainWitness, "group_snapshot", strings.Join(g.invs, ","),
+		trace.Int("packages", len(g.packages)),
+		trace.Int("solos", len(prepared.soloSubjects)),
+		trace.Int64("duration_ms", time.Since(gsStart).Milliseconds()),
+		trace.Err(err),
+	)
 	if err != nil {
 		return nil, prepared.inputs, err
 	}
@@ -87,6 +96,16 @@ func prepareWitnessGeneration(ctx context.Context, root string, g *captureGroup)
 }
 
 func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, inputs *pgoObservation, subjects []gofresh.Subject) (*gofresh.Snapshot, *gofresh.Snapshot, map[gofresh.Subject]bool, error) {
+	capStart := time.Now()
+	var soloCount, candCount int
+	defer func() {
+		trace.Emit(ctx, trace.DomainWitness, "capture_native_generation", strings.Join(g.invs, ","),
+			trace.Int("subjects", len(subjects)),
+			trace.Int("candidates", candCount),
+			trace.Int("solos", soloCount),
+			trace.Int64("duration_ms", time.Since(capStart).Milliseconds()),
+		)
+	}()
 	policy := gofresh.SessionPolicy{
 		EvidenceRoot: root, Vouches: slices.Clone(g.vouches), Execution: gofresh.PackageExecution,
 		PrepareCommand: engineRunner.PrepareCommand,
@@ -140,6 +159,7 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 			candidates = append(candidates, v.Subject)
 		}
 	}
+	candCount = len(candidates)
 	if len(candidates) == 0 {
 		return snapshot, nil, nil, nil
 	}
@@ -193,6 +213,7 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 			soloSubjects[v.Subject] = true
 		}
 	}
+	soloCount = len(soloSubjects)
 	if len(soloSubjects) == 0 {
 		return snapshot, nil, nil, nil
 	}

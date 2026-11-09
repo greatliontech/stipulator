@@ -6,10 +6,12 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/trace"
 )
 
 // The selective executor is the witness-only execution surface: it runs a
@@ -226,8 +228,15 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 				// The re-run spawns inside the package's slot and under
 				// its gate: registered at its spawn, reaped with its
 				// peak (REQ-evidence-admission-origin).
+				soloStart := time.Now()
 				solo = runNativePackage(ctx, invCtx, n, unit.pkg, []string{name}, spawn(), gate, proofs[unit.pkg], unit.run.execution)
 				solo.soloTest = name
+				trace.Emit(ctx, trace.DomainWitness, "solo_exec", unit.pkg+"."+name,
+					trace.String("invocation", n.Name),
+					trace.String("disposition", solo.disposition.String()),
+					trace.Int64("binary_ms", solo.binaryElapsed.Milliseconds()),
+					trace.Int64("duration_ms", time.Since(soloStart).Milliseconds()),
+				)
 			}
 			if ctx.Err() != nil {
 				pt := solo.buildTimingDiagnostic(n.Name, true)

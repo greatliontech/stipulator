@@ -1,4 +1,4 @@
-# Evaluate Shared CLI/MCP/Process Utility Module (`internal/guidance`, `internal/resident`, `internal/toolversion`, `internal/shortgates`, `internal/shapecorpus`, `internal/gotool`)
+# Evaluate Shared CLI/MCP/Process Utility Module (`internal/guidance`, `internal/resident`, `internal/toolversion`, `internal/shortgates`, `internal/shapecorpus`, `internal/gotool`, `internal/trace`)
 
 - **Status:** Open (user-authorized Option 1A internalization; evaluate Option 1B shared module when changes cross tools)
 - **Lands:** Next cross-tool CLI/MCP/process utility revision across `pew`, `stipulator`, and `gomutant`
@@ -13,6 +13,7 @@ When non-freshness subpackages were evicted from `github.com/greatliontech/gofre
 - [`internal/shortgates`](../../internal/shortgates/shortgates.go) — `testing.Short()` AST discipline test helper
 - [`internal/shapecorpus`](../../internal/shapecorpus/shapecorpus.go) — Go declaration-shape test corpus
 - [`internal/gotool`](../../internal/gotool/gotool.go) — `go` process-group containment (`Containment`, `Runner.Program`), `GOVERSION` sampler (`Sampler`, `SnapshotSampler`), and `Salvaged` helper
+- [`internal/trace`](../../internal/trace/trace.go) — zero-disabled-cost structured diagnostic tracing (`GOFRESH_TRACE` / `GOFRESH_TRACE_FILE`) interleaved with `gofresh`
 
 ## Consolidation Evaluation (Option 1B)
 

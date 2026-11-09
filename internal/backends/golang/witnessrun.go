@@ -8,11 +8,13 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/trace"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 )
@@ -308,7 +310,14 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 		degraded = seedingErr.Error()
 	} else {
 		var prepErr error
+		prepStart := time.Now()
 		groups, degraded, prepErr = prepareWitnessGroups(ctx, dir, d, cachedByKey)
+		trace.Emit(ctx, trace.DomainWitness, "prepare_witness_groups", dir,
+			trace.Int("groups", len(groups)),
+			trace.String("degraded", degraded),
+			trace.Int64("duration_ms", time.Since(prepStart).Milliseconds()),
+			trace.Err(prepErr),
+		)
 		if prepErr != nil {
 			// A toolchain-provenance refusal is a run-level abort, never
 			// a degradation (REQ-evidence-toolchain-provenance): the
@@ -1301,8 +1310,15 @@ var afterServedCheckForTest func(pkg string)
 // reserved for caller cancellation. A package serving nothing releases
 // its sibling here.
 func publishPackage(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
+	pubStart := time.Now()
 	wg.legs[pkg].published = true
 	records, reasons, _, err := publishExecuted(ctx, wg, pkg, m)
+	trace.Emit(ctx, trace.DomainWitness, "publish_package", pkg,
+		trace.Int("records", len(records)),
+		trace.Int("uncacheable", len(reasons)),
+		trace.Int64("duration_ms", time.Since(pubStart).Milliseconds()),
+		trace.Err(err),
+	)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1334,6 +1350,7 @@ func (wg *witnessGroup) release(pkg string) {
 // record that survived installs refreshed. The package's sibling is
 // released after. A cancellation surfaces through ctx.
 func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]uncacheable) {
+	revStart := time.Now()
 	leg := wg.legs[pkg]
 	defer wg.release(pkg)
 	served := wg.servedIn(pkg)
@@ -1341,6 +1358,15 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 	if len(served) == 0 {
 		return nil, nil, reasons
 	}
+	var driftedCount, recordCount int
+	defer func() {
+		trace.Emit(ctx, trace.DomainWitness, "revalidate_served", pkg,
+			trace.Int("served", len(served)),
+			trace.Int("drifted", driftedCount),
+			trace.Int("refreshed", recordCount),
+			trace.Int64("duration_ms", time.Since(revStart).Milliseconds()),
+		)
+	}()
 	if afterServedCheckForTest != nil {
 		afterServedCheckForTest(pkg)
 	}
@@ -1373,10 +1399,15 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 		for _, s := range served {
 			wg.executedWhy[s] = executedRevalidationFault.with(err.Error())
 		}
+		driftedCount = len(served)
 		return served, nil, reasons
 	}
 	var drifted []gofresh.Subject
 	var records []witnesscache.Record
+	defer func() {
+		driftedCount = len(drifted)
+		recordCount = len(records)
+	}()
 	for _, s := range served {
 		chosen := leg.chosen[s]
 		verdicts := batchVerdicts

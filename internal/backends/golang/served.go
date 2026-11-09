@@ -9,10 +9,12 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/greatliontech/gofresh"
 	"github.com/greatliontech/stipulator/internal/records"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
+	"github.com/greatliontech/stipulator/internal/trace"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -219,6 +221,7 @@ type symbolAnswer struct {
 // and scopes the typed load to the whole tree; the policy is read either
 // way, since every record it publishes is keyed by a selection.
 func NewServed(ctx context.Context, dir string, symbols []string) (*Served, error) {
+	servedStart := time.Now()
 	s, err := newServed(ctx, dir)
 	if err != nil {
 		return nil, err
@@ -309,6 +312,13 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 			s.unserved = append(s.unserved, sym)
 		}
 	}
+	trace.Emit(ctx, trace.DomainResolve, "new_served", s.dir,
+		trace.Int("symbols", len(symbols)),
+		trace.Int("served", len(s.served)),
+		trace.Int("unserved", len(s.unserved)),
+		trace.Int("degraded", len(s.degraded)),
+		trace.Int64("duration_ms", time.Since(servedStart).Milliseconds()),
+	)
 	return s, nil
 }
 
@@ -512,6 +522,15 @@ func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols [
 // narrowed away by gofresh's own refusal, the rest batch-checked alongside
 // recorded non-callable declarations governed by their source certificates.
 func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []resolutioncache.Record) {
+	selStart := time.Now()
+	servedBefore := len(s.served)
+	defer func() {
+		trace.Emit(s.ctx, trace.DomainResolve, "serve_selection", key,
+			trace.Int("records", len(recs)),
+			trace.Int("served", len(s.served)-servedBefore),
+			trace.Int64("duration_ms", time.Since(selStart).Milliseconds()),
+		)
+	}()
 	selected, err := endpoint.selected(key)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
@@ -725,12 +744,23 @@ func (s *Served) ensureBackend() (*Backend, error) {
 		// publishes under a fingerprint no later than the answer it
 		// carries.
 		if !s.whole {
+			openStart := time.Now()
 			s.openingCapture()
+			trace.Emit(s.ctx, trace.DomainResolve, "opening_capture", s.dir,
+				trace.Int("unserved", len(s.unserved)),
+				trace.Int64("duration_ms", time.Since(openStart).Milliseconds()),
+			)
 		}
 		patterns := s.loadPatterns()
 		s.typedLoads++
 		noteTypedLoad()
+		loadStart := time.Now()
 		b, err := newContext(s.ctx, s.dir, patterns)
+		trace.Emit(s.ctx, trace.DomainResolve, "typed_load", s.dir,
+			trace.Int("patterns", len(patterns)),
+			trace.Int64("duration_ms", time.Since(loadStart).Milliseconds()),
+			trace.Err(err),
+		)
 		if err != nil {
 			if s.ctx.Err() == nil {
 				s.backendLoaded = true
@@ -1073,6 +1103,7 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	if s.ctx.Err() != nil {
 		return
 	}
+	pubStart := time.Now()
 	// Every symbol's class and refusal, from the typed backend, before the
 	// capture: the record carries the whole answer set.
 	var unclassed []string
@@ -1198,6 +1229,15 @@ func (s *Served) publishSelection(key string, symbols []string) {
 	// A key publishes once per quiesce or close: the account is the
 	// sum, never the last publish's.
 	s.published[key] = account.summed(s.published[key])
+	trace.Emit(s.ctx, trace.DomainResolve, "publish_selection", key,
+		trace.Int("symbols", len(symbols)),
+		trace.Int("installed", account.installed),
+		trace.Int("moved", len(account.moved)),
+		trace.Int("unopened", len(account.unopened)),
+		trace.Int("uncaptured", len(account.uncaptured)),
+		trace.Int("refused", len(account.refused)),
+		trace.Int64("duration_ms", time.Since(pubStart).Milliseconds()),
+	)
 }
 
 // summed is this publish's account added to a prior publish's under the

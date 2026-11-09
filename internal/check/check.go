@@ -24,6 +24,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/greatliontech/gofresh"
 
@@ -33,6 +34,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/policy"
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/records"
+	"github.com/greatliontech/stipulator/internal/trace"
 	"github.com/greatliontech/stipulator/internal/verify"
 )
 
@@ -73,13 +75,19 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 
 	// Phase marks feed the operation's progress seam; with no reporter
 	// installed (the CLI path) every mark is a no-op.
+	trace.Refresh(os.Getenv(trace.EnvTrace), os.Getenv(trace.EnvTraceFile))
 	rep := progress.FromContext(ctx)
 	rep.Phase(stipulatorv1.Phase_PHASE_COMPILE)
 	// Everything the held inputs decide — compile errors, the manifest's
 	// coverage policy, the records' hygiene — is judged here, before the
 	// accepted policy is captured and before any child process
 	// (REQ-check-preparation).
+	prepStart := time.Now()
 	prepared, err := Prepare(fsys)
+	trace.Emit(ctx, trace.DomainCompile, "prepare_done", dir,
+		trace.Int64("duration_ms", time.Since(prepStart).Milliseconds()),
+		trace.Err(err),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +152,12 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 		// normalization fault is the check's fault, before the
 		// verification backend loads typed packages.
 		rep.Phase(stipulatorv1.Phase_PHASE_DISCOVERY)
+		capStart := time.Now()
 		pc, err := golang.LoadCapture(ctx, dir)
+		trace.Emit(ctx, trace.DomainDiscover, "load_capture", dir,
+			trace.Int64("duration_ms", time.Since(capStart).Milliseconds()),
+			trace.Err(err),
+		)
 		if err != nil {
 			return recordProblem(err)
 		}
@@ -253,7 +266,12 @@ func Run(ctx context.Context, dir string, full bool, scopeIds []string) (*stipul
 	res.SetVerify(vp)
 
 	rep.Phase(stipulatorv1.Phase_PHASE_COVERAGE)
+	covStart := time.Now()
 	cov := coverage.Evaluate(spec, vr, store, testRun != nil, covPol)
+	trace.Emit(ctx, trace.DomainVerify, "coverage_evaluate", dir,
+		trace.Int64("duration_ms", time.Since(covStart).Milliseconds()),
+		trace.Int("violations", len(cov.Violations)),
+	)
 	res.SetCoverage(cov.Proto())
 	// Composed reports carry the global account only at the result root.
 	res.GetCoverage().SetWitnessCacheLoad(nil)

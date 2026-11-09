@@ -10,6 +10,7 @@ import (
 
 	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/trace"
 )
 
 // packageExecution retains one artifact across independent isolation attempts.
@@ -59,6 +60,7 @@ func finishNativeRun(ctx context.Context, run *packageRun) {
 	if a == nil {
 		return
 	}
+	finStart := time.Now()
 	// The execution owner releases captures and runtime storage only after the
 	// package-completion consumer has selected and persisted its records.
 	var final gofresh.Finalized
@@ -75,6 +77,16 @@ func finishNativeRun(ctx context.Context, run *packageRun) {
 	}
 	*run.obs = *nativeObservation(run.pkg, run.producer, final, account, err)
 	run.obs.runtime = a.runtime
+	target := run.pkg
+	if run.soloTest != "" {
+		target = run.pkg + "." + run.soloTest
+	}
+	trace.Emit(ctx, trace.DomainWitness, "finish_native_run", target,
+		trace.Bool("solo", run.soloTest != ""),
+		trace.Int("subjects", len(final.Subjects)),
+		trace.Int64("duration_ms", time.Since(finStart).Milliseconds()),
+		trace.Err(err),
+	)
 }
 
 func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg string, selection []string, ordinal int32, gate *admission, leg *packageLeg, execution *packageExecution) (run packageRun) {
@@ -97,6 +109,12 @@ func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg 
 		b := buildRetained(ctx, n, pkg, hooks)
 		execution.buildElapsed = time.Since(buildStart)
 		execution.built = &b
+		trace.Emit(caller, trace.DomainWitness, "package_build", pkg,
+			trace.String("invocation", n.Name),
+			trace.Bool("no_test_files", b.NoTestFiles),
+			trace.Int64("duration_ms", execution.buildElapsed.Milliseconds()),
+			trace.Err(b.Err),
+		)
 	}
 	built, coverage, artifacts := execution.built, execution.coverage, execution.artifacts
 	if ctx.Err() != nil {
@@ -161,13 +179,23 @@ func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg 
 	producer := &stipulatorv1.ProducerIdentity{}
 	producer.SetInvocation(n.Name)
 	producer.SetProcessOrdinal(ordinal)
+	prepStart := time.Now()
 	unit, contribution, prepErr := prepareNativeAttempt(ctx, n, pkg, leg, built.Artifact, runtime, logPath, producer)
+	prepElapsed := time.Since(prepStart)
 	attempt.unit, attempt.err = unit, prepErr
 	binStart := time.Now()
 	actual := runRetained(caller, ctx, n, runtime, producer, hooks)
 	binElapsed := time.Since(binStart)
 	run = actual.Classify(n, pkg)
 	run.binaryElapsed = binElapsed
+	trace.Emit(caller, trace.DomainWitness, "package_exec", pkg,
+		trace.String("invocation", n.Name),
+		trace.Int("selection", len(selection)),
+		trace.String("disposition", run.disposition.String()),
+		trace.Int64("prep_ms", prepElapsed.Milliseconds()),
+		trace.Int64("binary_ms", binElapsed.Milliseconds()),
+		trace.Err(prepErr),
+	)
 	if actual.Producer == nil {
 		if prepErr == nil && unit != nil {
 			_ = unit.Submit(contribution, gofresh.Terminal{Kind: gofresh.NeverStarted, Reason: "retained test binary did not start"})
