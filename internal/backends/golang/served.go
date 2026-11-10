@@ -152,6 +152,9 @@ type Served struct {
 	openingUnknown       map[string]map[gofresh.Subject]bool
 	openingCertificates  map[string]resolutioncache.Certificate
 	checkingCertificates map[string]resolutioncache.Certificate
+	checkedCaptures      map[string]map[gofresh.Subject]gofresh.Fingerprint
+	checkedUnknown       map[string]map[gofresh.Subject]bool
+	reopened             bool
 	backend              *Backend
 	backendErr           error
 	backendLoaded        bool
@@ -362,7 +365,17 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Served{sample: newToolchainSample(), ctx: ctx, dir: abs, served: map[string]resolutioncache.Record{}, answers: map[string]symbolAnswer{}, pending: map[string][]string{}, reasons: map[string]resolutionReason{}}, nil
+	return &Served{
+		sample:          newToolchainSample(),
+		ctx:             ctx,
+		dir:             abs,
+		served:          map[string]resolutioncache.Record{},
+		checkedCaptures: map[string]map[gofresh.Subject]gofresh.Fingerprint{},
+		checkedUnknown:  map[string]map[gofresh.Subject]bool{},
+		answers:         map[string]symbolAnswer{},
+		pending:         map[string][]string{},
+		reasons:         map[string]resolutionReason{},
+	}, nil
 }
 
 func (s *Served) selection(key string) (buildSelection, bool) {
@@ -424,24 +437,86 @@ func (s *Served) openingCapture() {
 	if len(s.unserved) == 0 {
 		return
 	}
-	endpoint := newSelectionEndpoint(s.ctx, s.dir, s.sels)
+	canReuseInitial := !s.reopened && beforeCertificateCloseForTest == nil && captureForTest == nil && len(s.degraded) == 0 && s.inventoryComplete()
+	var endpoint *selectionEndpoint
+	getEndpoint := func() *selectionEndpoint {
+		if endpoint == nil {
+			endpoint = newSelectionEndpoint(s.ctx, s.dir, s.sels)
+		}
+		return endpoint
+	}
 	keys := make([]string, 0, len(s.sels))
 	for _, sel := range s.sels {
 		keys = append(keys, sel.key())
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		fps, unknown, ok := s.captureUnder(endpoint, key, s.unserved, "opening")
+		if canReuseInitial {
+			if fps, unknown, ok := s.reuseCheckedCapture(key, s.unserved); ok {
+				s.opening[key] = fps
+				s.openingUnknown[key] = unknown
+				continue
+			}
+		}
+		fps, unknown, ok := s.captureUnder(getEndpoint(), key, s.unserved, "opening")
 		if ok {
 			s.opening[key] = fps
 			s.openingUnknown[key] = unknown
 		}
 	}
-	certs, err := s.captureSourceCertificates(endpoint, s.unserved)
+	if canReuseInitial {
+		if certs, ok := s.reuseCheckingCertificates(s.unserved); ok {
+			s.openingCertificates = certs
+			return
+		}
+	}
+	certs, err := s.captureSourceCertificates(getEndpoint(), s.unserved)
 	if err != nil {
 		s.degraded = append(s.degraded, "opening source certificate: "+err.Error())
 	}
 	s.openingCertificates = certs
+}
+
+func (s *Served) reuseCheckedCapture(key string, symbols []string) (map[gofresh.Subject]gofresh.Fingerprint, map[gofresh.Subject]bool, bool) {
+	checkedFPs, hasKey := s.checkedCaptures[key]
+	checkedUnk := s.checkedUnknown[key]
+	fps := map[gofresh.Subject]gofresh.Fingerprint{}
+	unknown := map[gofresh.Subject]bool{}
+	for _, sym := range symbols {
+		subject, ok := s.subjectOf(sym)
+		if !ok {
+			continue
+		}
+		if s.set != nil && !s.inventory[key][subject.Package] {
+			continue
+		}
+		if !hasKey {
+			return nil, nil, false
+		}
+		if fp, ok := checkedFPs[subject]; ok {
+			fps[subject] = fp
+		} else if checkedUnk[subject] {
+			unknown[subject] = true
+		} else {
+			return nil, nil, false
+		}
+	}
+	return fps, unknown, true
+}
+
+func (s *Served) reuseCheckingCertificates(symbols []string) (map[string]resolutioncache.Certificate, bool) {
+	if len(s.checkingCertificates) == 0 {
+		return nil, false
+	}
+	certs := make(map[string]resolutioncache.Certificate, len(symbols))
+	for _, sym := range symbols {
+		cert, ok := s.checkingCertificates[sym]
+		if !ok {
+			return nil, false
+		}
+		certs[sym] = cert
+	}
+	return certs, true
 }
 
 // captureUnder builds a view over the symbols' subjects under one
@@ -563,6 +638,7 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		subjects = append(subjects, subject)
 		bySubject[subject] = rec
 	}
+	allGone := map[gofresh.Subject]bool{}
 	var view *gofresh.Snapshot
 	for len(subjects) > 0 {
 		view, err = engine.Snapshot(s.ctx, subjects, gofresh.CodeResult)
@@ -573,6 +649,7 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 			gone := map[gofresh.Subject]bool{}
 			for _, subject := range unknown.Subjects {
 				gone[subject] = true
+				allGone[subject] = true
 				s.reasons[bySubject[subject].Symbol] = resolutionNoLongerDeclared.with("")
 			}
 			if len(gone) == 0 {
@@ -594,6 +671,10 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		}
 		break
 	}
+	if len(subjects) == 0 && len(allGone) > 0 {
+		s.checkedCaptures[key] = map[gofresh.Subject]gofresh.Fingerprint{}
+		s.checkedUnknown[key] = allGone
+	}
 	if len(subjects) > 0 {
 		// Equivalence is of the SOURCE closure alone: the current capture's
 		// closure tiers — maximal closure, toolchain, build configuration —
@@ -605,6 +686,8 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
 			return
 		}
+		s.checkedCaptures[key] = current
+		s.checkedUnknown[key] = allGone
 		for _, subject := range subjects {
 			rec := bySubject[subject]
 			fp, captured := current[subject]
@@ -1054,6 +1137,7 @@ func (s *Served) Quiesce() {
 		s.backend = nil
 		s.backendErr = nil
 		s.backendLoaded = false
+		s.reopened = true
 		if hadBackend {
 			debug.FreeOSMemory()
 		}

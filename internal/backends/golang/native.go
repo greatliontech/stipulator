@@ -134,19 +134,7 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 		}
 		return snapshot, nil, nil, nil
 	}
-	probeRuntime := gofresh.RuntimeDescription{Directory: g.directory(root), Environment: g.witnessEnv}
-	binding, err := snapshot.BindRuntime(ctx, probeRuntime)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, nil, ctx.Err()
-		}
-		return snapshot, nil, nil, nil
-	}
-	batchCands := make([]gofresh.Candidate, 0, len(subjects))
-	for _, s := range subjects {
-		batchCands = append(batchCands, gofresh.Candidate{Subject: s, Recorded: fps[s]})
-	}
-	verdicts, err := binding.CheckBatchWithLedgers(ctx, batchCands, nil)
+	verdicts, err := snapshot.CheckBatch(ctx, fps)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, nil, nil, ctx.Err()
@@ -154,9 +142,9 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 		return snapshot, nil, nil, nil
 	}
 	var candidates []gofresh.Subject
-	for _, v := range verdicts {
-		if v.Verdict.Ground.Cause.Kind == gofresh.SharedDynamicStateCause {
-			candidates = append(candidates, v.Subject)
+	for _, s := range subjects {
+		if verdicts[s].Ground.Cause.Kind == gofresh.SharedDynamicStateCause {
+			candidates = append(candidates, s)
 		}
 	}
 	candCount = len(candidates)
@@ -189,18 +177,7 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 		}
 		return snapshot, nil, nil, nil
 	}
-	soloBinding, err := candSnapshot.BindRuntime(ctx, probeRuntime)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, nil, ctx.Err()
-		}
-		return snapshot, nil, nil, nil
-	}
-	soloCands := make([]gofresh.Candidate, 0, len(candidates))
-	for _, s := range candidates {
-		soloCands = append(soloCands, gofresh.Candidate{Subject: s, Recorded: soloFPs[s]})
-	}
-	soloVerdicts, err := soloBinding.CheckBatchWithLedgers(ctx, soloCands, nil)
+	soloVerdicts, err := candSnapshot.CheckBatch(ctx, soloFPs)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, nil, nil, ctx.Err()
@@ -208,9 +185,9 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 		return snapshot, nil, nil, nil
 	}
 	soloSubjects := map[gofresh.Subject]bool{}
-	for _, v := range soloVerdicts {
-		if v.Verdict.Ground.Cause.Kind != gofresh.SharedDynamicStateCause {
-			soloSubjects[v.Subject] = true
+	for _, s := range candidates {
+		if soloVerdicts[s].Ground.Cause.Kind != gofresh.SharedDynamicStateCause {
+			soloSubjects[s] = true
 		}
 	}
 	soloCount = len(soloSubjects)
