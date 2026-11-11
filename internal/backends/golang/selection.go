@@ -185,6 +185,19 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 					mainSel[pkg] = solos[:1]
 					plannedSolos[pkg] = solos[1:]
 				}
+				if trace.AnyEnabled() {
+					for _, name := range plannedSolos[pkg] {
+						cause := "solo_subject"
+						if !view.isSolo(gofresh.Subject{Package: pkg, Symbol: name}) && strings.HasPrefix(name, "Fuzz") {
+							cause = "mixed_fuzz"
+						}
+						trace.Emit(ctx, trace.DomainWitness, "solo_plan", pkg+"."+name,
+							trace.String("invocation", n.Name),
+							trace.String("mode", "planned"),
+							trace.String("cause", cause),
+						)
+					}
+				}
 				continue
 			}
 		}
@@ -218,6 +231,15 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 		var denied []string
 		if unit.run.producer != nil {
 			denied = deniedTests(&unit.run, mainSel[unit.pkg])
+			if trace.AnyEnabled() {
+				for _, name := range denied {
+					trace.Emit(ctx, trace.DomainWitness, "solo_plan", unit.pkg+"."+name,
+						trace.String("invocation", n.Name),
+						trace.String("mode", "denied"),
+						trace.String("cause", unit.run.disposition.String()),
+					)
+				}
+			}
 			if unit.run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED {
 				denied = append(denied, plannedSolos[unit.pkg]...)
 			}
@@ -231,12 +253,14 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 				soloStart := time.Now()
 				solo = runNativePackage(ctx, invCtx, n, unit.pkg, []string{name}, spawn(), gate, proofs[unit.pkg], unit.run.execution)
 				solo.soloTest = name
-				trace.Emit(ctx, trace.DomainWitness, "solo_exec", unit.pkg+"."+name,
-					trace.String("invocation", n.Name),
-					trace.String("disposition", solo.disposition.String()),
-					trace.Int64("binary_ms", solo.binaryElapsed.Milliseconds()),
-					trace.Int64("duration_ms", time.Since(soloStart).Milliseconds()),
-				)
+				if trace.AnyEnabled() {
+					trace.Emit(ctx, trace.DomainWitness, "solo_exec", unit.pkg+"."+name,
+						trace.String("invocation", n.Name),
+						trace.String("disposition", solo.disposition.String()),
+						trace.Int64("binary_ms", solo.binaryElapsed.Milliseconds()),
+						trace.Int64("duration_ms", time.Since(soloStart).Milliseconds()),
+					)
+				}
 			}
 			if ctx.Err() != nil {
 				pt := solo.buildTimingDiagnostic(n.Name, true)
