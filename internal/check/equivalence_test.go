@@ -7,6 +7,7 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -90,7 +91,7 @@ func TestCheckCatchesEverySuiteFailureClass(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree per class")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 
 	t.Run("package build failure", func(t *testing.T) {
 		res := checkUnhealthy(t, baseTree(map[string]string{

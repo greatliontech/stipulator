@@ -16,6 +16,7 @@ import (
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/gotool"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -34,7 +35,7 @@ func discoverFixture(t *testing.T) string {
 // hermetic state, so host configuration cannot steer these tests.
 func neutralAmbient(t *testing.T) {
 	t.Helper()
-	NeutralAmbient(t)
+	testenv.NeutralAmbient(t)
 }
 
 func goInvocation(name string, cfg *stipulatorv1.GoInvocationConfig) *stipulatorv1.PolicyInvocation {

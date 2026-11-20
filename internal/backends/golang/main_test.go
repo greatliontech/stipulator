@@ -6,22 +6,26 @@ import (
 	"os"
 	"regexp"
 	"testing"
+
+	"github.com/greatliontech/stipulator/internal/testenv"
 )
 
-// TestMain loads the shared repository-tree backend: after flags parse,
-// before m.Run installs the testlog, so the tree read stays outside
-// every witness's observation exactly as a package-init load kept it,
-// and only on the full tier when at least one selected test reads it.
+// TestMain isolates XDG cache/state homes while preserving warm GOCACHE and
+// loads the shared repository-tree backend: after flags parse, before m.Run
+// installs the testlog, so the tree read stays outside every witness's
+// observation exactly as a package-init load kept it, and only on the full
+// tier when at least one selected test reads it.
 func TestMain(m *testing.M) {
-	flag.Parse()
-	if !testing.Short() && needsRepoBackend() {
-		b, err := newContext(context.Background(), "../../..", nil)
-		if err != nil {
-			panic(err)
+	os.Exit(testenv.RunMain(m, func() {
+		flag.Parse()
+		if !testing.Short() && needsRepoBackend() {
+			b, err := newContext(context.Background(), "../../..", nil)
+			if err != nil {
+				panic(err)
+			}
+			backend = b
 		}
-		backend = b
-	}
-	os.Exit(m.Run())
+	}))
 }
 
 func needsRepoBackend() bool {

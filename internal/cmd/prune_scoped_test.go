@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -24,7 +24,7 @@ func TestPruneScopedWitnessEvaluationAndDeletionOnlyFastPath(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds the CLI and executes a policy over a fixture tree")
 	}
-	golang.NeutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	bin := cliBinary(t)
 	dir := t.TempDir()
 	write := func(path, content string) {

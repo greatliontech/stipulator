@@ -338,17 +338,25 @@ runtime-input manifest is captured per package under the same environment
 as the witness invocation and attached to every test fingerprinted from
 that run — an over-approximation whose failure direction is a spurious
 re-run, never a spurious reuse, with one declared exception class: the
-observation excludes the repository root listing and the VCS bookkeeping
-tree (`.` and `.git`), whose digests move under unrelated tooling and are
-asserted to be no witness's input, together with the invocation's
+observation excludes the runner-owned bookkeeping and execution surfaces —
+the repository root listing and the VCS bookkeeping tree (`.` and `.git`),
+whose digests move under unrelated tooling and are asserted to be no
+witness's input, the attempt's own ephemeral retained test binary, compiler
+work directory, and runtime coverage storage (REQ-go-retained-test-execution,
+whose compiled content is already pinned by the closure, build, and toolchain
+guards and removed when the package finishes), and the runner-owned telemetry
+configuration home (REQ-go-owned-processes-telemetry-home, when the runner
+owns one for the platform) — together with the invocation's
 reviewed exclusions — committed policy entries, each a tree-relative
 slash path or clean absolute host path (an absolute entry inside the
 tree, under the frame's resolved base or the lexical one, is refused:
 in-tree reads classify relative, so it would exclude nothing), naming
 surfaces the repository asserts the same way (a session tool's
-bookkeeping directory is the canonical case). A record's observation proves nothing about the
+bookkeeping directory is the canonical case). Runner-owned exclusions belong
+to the fixed execution protocol and never enter persisted record metadata; by
+contrast, a record's observation proves nothing about the
 surfaces its capture-time reviewed exclusions elided, so every record
-MUST carry that set and serve only while the current policy still asserts
+MUST carry that reviewed set and serve only while the current policy still asserts
 each entry: a withdrawn or narrowed exclusion re-executes the witnesses
 it licensed, while an added exclusion serves existing evidence unchanged
 — its identities are in the manifest and simply revalidate.

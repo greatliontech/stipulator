@@ -254,3 +254,99 @@ func TestLinkerInputGatePreventsEveryDegradedNativeAttempt(t *testing.T) {
 		t.Fatalf("positive spawn control: %d %+v", spawns, run)
 	}
 }
+
+func TestLinkerInputEligibilityGatedByRunnerOwnedTelemetryHome(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-invocation-input-files")
+	neutralAmbient(t)
+	t.Setenv("HOME", t.TempDir())
+	dir, out := discoverFixture(t), linkerTempDir(t)
+
+	if configHomeSelectable(runtime.GOOS) {
+		// 1. Runner-owned telemetry config home (TelemetrySource != "") is excluded.
+		baseCfg := linkerConfig(t, `packages:"./..."`)
+		baseNorm, err := NormalizeInvocation(t.Context(), dir, goInvocation("owned-tel", baseCfg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if baseNorm.TelemetrySource == "" {
+			t.Fatal("expected runner-owned TelemetrySource under neutralAmbient")
+		}
+		ownedCfgHome, ok := gotool.LookupEnv(baseNorm.Env, "XDG_CONFIG_HOME")
+		if !ok || ownedCfgHome == "" {
+			t.Fatal("missing runner-owned XDG_CONFIG_HOME")
+		}
+		ownedModeFile := filepath.Join(ownedCfgHome, "go", "telemetry", "mode")
+		ownedSelCfg := linkerConfig(t, `packages:"./..." input_files_from_environment:"MANIFEST"`)
+		ownedSelCfg.SetEnvironment([]string{"MANIFEST=" + ownedModeFile})
+		ownedSelNorm, err := NormalizeInvocation(t.Context(), dir, goInvocation("owned-tel", ownedSelCfg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ownedEnv, err := prepareRetainedEnvironment(ownedSelNorm, dir, ownedSelNorm.GOROOT)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer ownedEnv.Close()
+		if err := requireExactInputEligibility(t.Context(), ownedSelNorm, ownedEnv); err == nil {
+			t.Fatal("runner-owned telemetry file was admitted as an eligible input file")
+		}
+
+		// 2. Policy-declared XDG_CONFIG_HOME becomes TelemetrySource while only the
+		// derived owned telemetry home is excluded; files under the caller's source
+		// config home remain raw-byte eligible.
+		userCfgHome := filepath.Join(out, "user-xdg-config")
+		userFile := filepath.Join(userCfgHome, "app", "settings.json")
+		if err := os.MkdirAll(filepath.Dir(userFile), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(userFile, []byte("{}"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		userSelCfg := linkerConfig(t, `packages:"./..." input_files_from_environment:"MANIFEST"`)
+		userSelCfg.SetEnvironment([]string{"XDG_CONFIG_HOME=" + userCfgHome, "MANIFEST=" + userFile})
+		userSelNorm, err := NormalizeInvocation(t.Context(), dir, goInvocation("user-cfg", userSelCfg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		userEnv, err := prepareRetainedEnvironment(userSelNorm, dir, userSelNorm.GOROOT)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer userEnv.Close()
+		if err := requireExactInputEligibility(t.Context(), userSelNorm, userEnv); err != nil {
+			t.Fatalf("caller source config home file was unexpectedly excluded: %v", err)
+		}
+	}
+
+	// 3. Platform-independent check of both TelemetrySource arms on XDG_CONFIG_HOME.
+	directCfgHome := filepath.Join(out, "direct-xdg-config")
+	directFile := filepath.Join(directCfgHome, "settings.json")
+	if err := os.MkdirAll(directCfgHome, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(directFile, []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	directOwned := &NormalizedInvocation{
+		Dir:             dir,
+		TelemetrySource: filepath.Join(out, "source-home"),
+		Env:             gotool.SetEnv(gotool.SetEnv(os.Environ(), "XDG_CONFIG_HOME", directCfgHome), "MANIFEST", directFile),
+	}
+	if err := resolveLinkerSelection(directOwned, linkerConfig(t, `input_files_from_environment:"MANIFEST"`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireExactInputEligibility(t.Context(), directOwned, linkerRuntime(t, directOwned)); err == nil {
+		t.Fatal("owned XDG_CONFIG_HOME (TelemetrySource non-empty) was admitted")
+	}
+
+	unownedNorm := &NormalizedInvocation{
+		Dir: dir,
+		Env: gotool.SetEnv(gotool.SetEnv(os.Environ(), "XDG_CONFIG_HOME", directCfgHome), "MANIFEST", directFile),
+	}
+	if err := resolveLinkerSelection(unownedNorm, linkerConfig(t, `input_files_from_environment:"MANIFEST"`)); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireExactInputEligibility(t.Context(), unownedNorm, linkerRuntime(t, unownedNorm)); err != nil {
+		t.Fatalf("unowned XDG_CONFIG_HOME (TelemetrySource empty) was unexpectedly excluded: %v", err)
+	}
+}

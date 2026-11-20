@@ -10,6 +10,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/compile"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -27,7 +28,7 @@ func TestCheckServesFreshWitnessesByDefault(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	files := baseTree(nil)
 	files[".stipulator/policy.textproto"] = racePolicy
 	dir := writeTree(t, files)
@@ -68,7 +69,7 @@ func TestCheckDefaultExecutesOnlyTheStaleRemainder(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	files := baseTree(nil)
 	files[".stipulator/policy.textproto"] = racePolicy
 	dir := writeTree(t, files)
@@ -106,7 +107,7 @@ func TestCheckDefaultRedWitnessFailsWithDiagnostics(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	files := baseTree(map[string]string{
 		"specs/check.md": "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
 		".stipulator/bindings/tests.textproto": "bindings {\n" +
@@ -167,7 +168,7 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	files := baseTree(map[string]string{
 		".stipulator/policy.textproto": racePolicy,
 		"specs/check.md": "# Check\n\n**REQ-fix-a** (behavior): The fixture MUST double.\n\n" +
@@ -355,7 +356,7 @@ func TestCheckScopedVerdictExcludesAnExcusedStaleConsentOnTheBoundary(t *testing
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	outsideDoc := func(text string) string {
 		return "# Scoped gap\n\n**REQ-fix-a** (behavior): The fixture MUST double.\n\n**REQ-fix-out** (behavior): " + text + "\n"
 	}

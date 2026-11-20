@@ -13,6 +13,7 @@ import (
 	pb "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/progress"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/internal/wire"
@@ -85,7 +86,7 @@ func TestWitnessCacheHumanRenderingBoundsDetails(t *testing.T) {
 // witnessAccountCLI supplies one captured pass to the real command path.
 func witnessAccountCLI(t *testing.T) (string, *verify.TestRun, *int) {
 	t.Helper()
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := t.TempDir()
 	for path, text := range map[string]string{
 		"go.mod":                         "module example.com/cacheaccount\n\ngo 1.26.4\n",

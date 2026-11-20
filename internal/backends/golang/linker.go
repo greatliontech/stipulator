@@ -333,7 +333,7 @@ func requireExactInputEligibility(ctx context.Context, n *NormalizedInvocation, 
 			return fmt.Errorf("input file environment %s no longer selects frozen file %s", f.Name, f.Path)
 		}
 		reason, err := gofresh.CheckFileInputEligibility(ctx, treeRoot(n), runtime.Dir, f.Path, gofresh.ProducerIngest{
-			Env: runtime.Env, PrepareCommand: ownedRunner.PrepareCommand, Roots: n.inputRoots, ExcludedPaths: n.ExcludedPaths,
+			Env: runtime.Env, PrepareCommand: ownedRunner.PrepareCommand, Roots: n.inputRoots, ExcludedPaths: runnerEnvironmentExcludedPaths(n, runtime.Env),
 		})
 		if err != nil {
 			return fmt.Errorf("input file environment %s (%s): %w", f.Name, f.Path, err)

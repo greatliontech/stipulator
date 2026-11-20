@@ -938,9 +938,18 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 	}
 
 	// Removal failures surface beside the partial counts - a clean pass
-	// must never be reported over an undeletable entry.
+	// must never be reported over an undeletable entry, and the surviving
+	// record's compartment ledger must stay intact.
 	if runtime.GOOS != "windows" {
-		install("example.com/p", "TestStuck")
+		stuck := record("example.com/p", "TestStuck", digests["TestStuck"])
+		stuck.CompartmentLedger = simpleLedger("TestStuck")
+		if err := Install(t.Context(), dir, stuck); err != nil {
+			t.Fatal(err)
+		}
+		past := time.Now().Add(-time.Hour)
+		if err := os.Chtimes(ledgerPath(store, coordinateOf(stuck).key()), past, past); err != nil {
+			t.Fatal(err)
+		}
 		if err := os.Chmod(store, 0o555); err != nil {
 			t.Fatal(err)
 		}
@@ -948,6 +957,9 @@ func TestWitnessStoreGCDropsDepartedIdentities(t *testing.T) {
 		removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return false }, nil)
 		if err == nil {
 			t.Fatalf("undeletable entries reported clean: %d removed, %d kept", removed, kept)
+		}
+		if LoadLedger(dir, stuck) == nil {
+			t.Fatal("surviving undeletable record lost its compartment ledger during GC")
 		}
 	}
 }
@@ -1058,5 +1070,114 @@ func TestInstallRefusesWhatTheEncoderRefuses(t *testing.T) {
 	}
 	if got := Load(t.Context(), dir).Records; len(got) != 0 {
 		t.Fatalf("a reordered fingerprint member served: %+v", got)
+	}
+}
+
+func TestGCReclaimsInvalidStructureAndManifestRefusedEnvelopes(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-store-gc")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+
+	validRec := Record{
+		Group:       "6772702d64696765",
+		Package:     "example.com/p",
+		Test:        "TestValid",
+		Outcomes:    map[string]string{"example.com/p.TestValid": "passed"},
+		Fingerprint: ledgerFingerprint(t, strings.Repeat("a", 32)),
+	}
+	if err := Install(t.Context(), dir, validRec); err != nil {
+		t.Fatal(err)
+	}
+
+	// Envelope passes decodeEnvelope (valid version 9 + matching filename),
+	// but fails loadEntry structure check (empty Outcomes map).
+	badStruct := Record{
+		Group:       "6772702d64696765",
+		Package:     "example.com/p",
+		Test:        "TestBadStruct",
+		Outcomes:    map[string]string{},
+		Fingerprint: ledgerFingerprint(t, strings.Repeat("b", 32)),
+	}
+	if err := Install(t.Context(), dir, badStruct); err != nil {
+		t.Fatal(err)
+	}
+
+	// Envelope passes decodeEnvelope, but RuntimeInputs manifest is malformed/prior version.
+	badManifest := Record{
+		Group:       "6772702d64696765",
+		Package:     "example.com/p",
+		Test:        "TestBadManifest",
+		Outcomes:    map[string]string{"example.com/p.TestBadManifest": "passed"},
+		Fingerprint: ledgerFingerprint(t, strings.Repeat("c", 32)),
+	}
+	badManifest.Fingerprint.RuntimeInputs = `{"version":2}`
+	if err := Install(t.Context(), dir, badManifest); err != nil {
+		t.Fatal(err)
+	}
+
+	removed, kept, err := GC(t.Context(), dir, func(string, string) bool { return true }, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if removed != 2 || kept != 1 {
+		t.Fatalf("GC = (%d removed, %d kept), want (2, 1)", removed, kept)
+	}
+}
+
+func TestInstallBatchIsolatesPerRecordFailuresAndDeduplicatesLedgers(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+
+	// All-invalid batch must leave no store directory or orphan ledger.
+	badLedger := simpleLedger("TestBad")
+	badLedger.BindingStrategy = "unknown"
+	allBad := []Record{
+		{
+			Group:             "6772702d64696765",
+			Package:           "example.com/p",
+			Test:              "TestBadKind",
+			Outcomes:          map[string]string{"example.com/p.TestBadKind": "passed"},
+			Fingerprint:       Fingerprint{},
+			CompartmentLedger: simpleLedger("TestBadKind"),
+		},
+		{
+			Group:             "6772702d64696765",
+			Package:           "example.com/p",
+			Test:              "TestBadLedger",
+			Outcomes:          map[string]string{"example.com/p.TestBadLedger": "passed"},
+			Fingerprint:       ledgerFingerprint(t, strings.Repeat("1", 32)),
+			CompartmentLedger: badLedger,
+		},
+	}
+	installed, errs, ctxErr := InstallBatch(t.Context(), dir, allBad)
+	if ctxErr != nil || len(installed) != 0 || len(errs) != 2 || errs[0] == nil || errs[1] == nil {
+		t.Fatalf("all-invalid InstallBatch = (%v, %v, %v), want 0 installed and 2 errors", installed, errs, ctxErr)
+	}
+	if store, _ := StoreDir(dir); store != "" {
+		if entries, _ := os.ReadDir(store); len(entries) != 0 {
+			t.Fatalf("all-invalid batch created store entries: %v", entries)
+		}
+	}
+
+	// Mixed batch: invalid middle record fails isolated while valid siblings sharing
+	// the same CompartmentLedger coordinate land with one ledger file.
+	sharedLedger := &CompartmentLedger{
+		BindingStrategy: gofresh.TestVariantBindingStrategy,
+		FileHeaders:     []CompartmentFileHeader{{File: "p_test.go", Hash: strings.Repeat("9", 32), Bindings: &CompartmentFileBindings{Package: "p"}}},
+		Declarations: []CompartmentDeclaration{
+			{File: "p_test.go", Package: "p", Kind: "func", Name: "TestOne", Hash: strings.Repeat("7", 32)},
+			{File: "p_test.go", Package: "p", Kind: "func", Name: "TestTwo", Hash: strings.Repeat("8", 32)},
+		},
+	}
+	fp := ledgerFingerprint(t, strings.Repeat("4", 32))
+	recOne := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestOne", Outcomes: map[string]string{"example.com/p.TestOne": "passed"}, Fingerprint: fp, CompartmentLedger: sharedLedger}
+	recTwo := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestTwo", Outcomes: map[string]string{"example.com/p.TestTwo": "passed"}, Fingerprint: fp, CompartmentLedger: sharedLedger}
+	badSameCoord := Record{Group: "6772702d64696765", Package: "example.com/p", Test: "TestBadSameCoord", Outcomes: map[string]string{"example.com/p.TestBadSameCoord": "passed"}, Fingerprint: fp, CompartmentLedger: badLedger}
+	installed, errs, ctxErr = InstallBatch(t.Context(), dir, []Record{badSameCoord, recOne, allBad[0], recTwo})
+	if ctxErr != nil || len(installed) != 2 || errs[0] == nil || errs[1] != nil || errs[2] == nil || errs[3] != nil {
+		t.Fatalf("mixed InstallBatch = (%d installed, errs=%v, ctxErr=%v), want 2 installed and isolated errors at 0,2", len(installed), errs, ctxErr)
+	}
+	if LoadLedger(dir, recOne) == nil || LoadLedger(dir, recTwo) == nil {
+		t.Fatal("shared compartment ledger missing after InstallBatch")
 	}
 }

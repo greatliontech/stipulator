@@ -237,17 +237,31 @@ func (s Store) Install(bound int, entries ...Entry) error {
 		return err
 	}
 	s.recordCoord()
-	var rank []string
-	written := map[string]bool{}
-	touched := map[string]bool{}
+	names := make([]string, 0, len(entries))
 	for _, e := range entries {
 		if err := WriteAtomic(s.path, s.pattern(), filepath.Join(s.path, e.Name), e.Data); err != nil {
 			return err
 		}
-		touched[identityOf(e.Name)] = true
+		names = append(names, e.Name)
 	}
-	for i := len(entries) - 1; i >= 0; i-- {
-		if name := entries[i].Name; !written[name] {
+	return s.BoundVariants(bound, names)
+}
+
+// BoundVariants bounds each identity touched by landedNames to bound variants,
+// ranking landedNames latest-first ahead of the store's prior files newest-first
+// in a single directory scan.
+func (s Store) BoundVariants(bound int, landedNames []string) error {
+	if len(landedNames) == 0 {
+		return nil
+	}
+	var rank []string
+	written := map[string]bool{}
+	touched := map[string]bool{}
+	for _, name := range landedNames {
+		touched[identityOf(name)] = true
+	}
+	for i := len(landedNames) - 1; i >= 0; i-- {
+		if name := landedNames[i]; !written[name] {
 			written[name] = true
 			rank = append(rank, name)
 		}

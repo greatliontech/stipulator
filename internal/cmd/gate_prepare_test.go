@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -22,7 +23,7 @@ func TestGateVocabularyRefusesBeforeAnyWitness(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := t.TempDir()
 	marker := filepath.Join(t.TempDir(), "executed")
 	files := map[string]string{

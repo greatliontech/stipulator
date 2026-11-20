@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/stipulate"
 	"github.com/spf13/cobra"
 )
@@ -24,7 +24,7 @@ func TestCommandsRefuseHygieneBeforeAnyWitness(t *testing.T) {
 	if testing.Short() {
 		t.Skip("prepares a race policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := t.TempDir()
 	marker := filepath.Join(t.TempDir(), "executed")
 	files := map[string]string{
@@ -121,13 +121,6 @@ func TestCommandsRefuseHygieneBeforeAnyWitness(t *testing.T) {
 	}
 }
 
-// neutralAmbient pins the ambient controls policy normalization reads to
-// a known hermetic state, so host configuration cannot steer these tests.
-func neutralAmbient(t *testing.T) {
-	t.Helper()
-	golang.NeutralAmbient(t)
-}
-
 // TestNoTestVerificationNeedsNoPolicyRecord pins that only a witness run
 // consumes the accepted policy: verify --no-test and prune --no-test
 // resolve their bindings on a tree that has no policy record at all
@@ -137,7 +130,7 @@ func TestNoTestVerificationNeedsNoPolicyRecord(t *testing.T) {
 	if testing.Short() {
 		t.Skip("resolves a fixture module through the verification backend")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := t.TempDir()
 	files := map[string]string{
 		"go.mod":                             "module example.com/notest\n\ngo 1.26.4\n",

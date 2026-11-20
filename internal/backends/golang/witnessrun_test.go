@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -2827,5 +2828,213 @@ func TestWritesOnce(t *testing.T) {
 	}
 	if got := drift.Outcomes["example.com/driftown/reader.TestReads"]; got != verify.TestPassed {
 		t.Fatalf("drift: reader = %v, want PASSED: the retry ran outside the reader's own invocation", got)
+	}
+}
+
+func TestRunWitnessesExcludesRetainedBinaryAndTelemetryHomeAndUnlinksTestlog(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-inputs")
+	directLog := filepath.Join(t.TempDir(), "stipulator-testlog-direct.txt")
+	if err := os.WriteFile(directLog, []byte("testlog\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	directRun := &packageRun{
+		pkg:     "example.com/selfexe/pkg",
+		obs:     &ProcessObservation{},
+		attempt: &nativeAttempt{logPath: directLog},
+	}
+	finishNativeRun(context.Background(), directRun)
+	if directRun.attempt.logPath != "" {
+		t.Fatalf("finishNativeRun left attempt.logPath = %q, want empty", directRun.attempt.logPath)
+	}
+	if _, err := os.Stat(directLog); !os.IsNotExist(err) {
+		t.Fatalf("finishNativeRun did not immediately unlink testlog: err = %v", err)
+	}
+
+	realRoot := filepath.Join(t.TempDir(), "real-repo")
+	if err := os.MkdirAll(filepath.Join(realRoot, "tmp"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	linkRoot := filepath.Join(t.TempDir(), "link-repo")
+	if err := os.Symlink(realRoot, linkRoot); err != nil {
+		t.Fatal(err)
+	}
+	nonExistentLeaf := filepath.Join(linkRoot, "tmp", "cover.out")
+	gotExcl := appendRunnerExclusion(nil, linkRoot, nonExistentLeaf)
+	if !slices.Contains(gotExcl, nonExistentLeaf) || !slices.Contains(gotExcl, "tmp/cover.out") {
+		t.Fatalf("appendRunnerExclusion(linkRoot, nonExistentLeaf) = %v, want both lexical %q and resolved tree-relative %q", gotExcl, nonExistentLeaf, "tmp/cover.out")
+	}
+
+	if testing.Short() {
+		t.Skip("compiles and executes retained Go test binaries across cold and warm runs")
+	}
+	neutralAmbient(t)
+	t.Setenv("HOME", t.TempDir())
+	realMod := writeModule(t, map[string]string{
+		"go.mod": "module example.com/selfexe\n\ngo 1.26\n",
+		"pkg/pkg_test.go": `package pkg
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+)
+
+//gofresh:pure
+func TestInspectsOwnExecutableAndTelemetryConfig(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(exe); err != nil {
+		t.Fatal(err)
+	}
+	switch runtime.GOOS {
+	case "linux", "freebsd", "openbsd", "netbsd", "dragonfly", "solaris", "illumos":
+		cfg := os.Getenv("XDG_CONFIG_HOME")
+		if cfg == "" {
+			t.Fatal("missing runner-owned XDG_CONFIG_HOME")
+		}
+		if _, err := os.ReadFile(filepath.Join(cfg, "go", "telemetry", "mode")); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+`,
+	})
+	tmp := filepath.Join(t.TempDir(), "symlinked-module")
+	if err := os.Symlink(realMod, tmp); err != nil {
+		t.Fatal(err)
+	}
+	isolatedTmp := filepath.Join(tmp, "runner-tmp")
+	if err := os.MkdirAll(isolatedTmp, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("TMPDIR", isolatedTmp)
+
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetPlainWitness(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("plain", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cold.Degraded != "" || cold.Ran != 1 || cold.Uncached != 0 {
+		t.Fatalf("cold run = (degraded=%q, ran=%d, uncached=%d, reasons=%v), want 1/0", cold.Degraded, cold.Ran, cold.Uncached, cold.UncacheableReasons)
+	}
+	entries, err := os.ReadDir(isolatedTmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ent := range entries {
+		if strings.HasPrefix(ent.Name(), "stipulator-testlog-") {
+			t.Fatalf("leaked testlog file in TMPDIR after RunWitnesses: %s", ent.Name())
+		}
+	}
+	recs := witnesscache.Load(t.Context(), tmp).Records
+	if len(recs) != 1 {
+		t.Fatalf("published records = %d, want 1", len(recs))
+	}
+	for _, rec := range recs {
+		if len(rec.ObservationExclusions) != 0 {
+			t.Fatalf("runner-owned exclusions leaked into persisted ObservationExclusions: %v", rec.ObservationExclusions)
+		}
+		if strings.Contains(rec.Fingerprint.RuntimeInputs, "telemetry") || strings.Contains(rec.Fingerprint.RuntimeInputs, "stipulator-retained-") {
+			t.Fatalf("runner-owned path leaked into Fingerprint.RuntimeInputs for %s: %s", rec.Test, rec.Fingerprint.RuntimeInputs)
+		}
+	}
+
+	warm, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if warm.Degraded != "" || warm.Fresh != 1 || warm.Ran != 0 {
+		t.Fatalf("warm run after retainedArtifact.Close() = (degraded=%q, fresh=%d, ran=%d, executedWhy=%v), want 1 fresh / 0 ran",
+			warm.Degraded, warm.Fresh, warm.Ran, warm.ExecutedReasons)
+	}
+}
+
+func TestRunWitnessesPreservesPrimaryVariantRefusalOverOlderHistoricalVariants(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
+	if testing.Short() {
+		t.Skip("executes cold and stale multi-variant witness runs over a temporary module")
+	}
+	neutralAmbient(t)
+	tmp := writeModule(t, map[string]string{
+		"go.mod":   "module example.com/varwhy\n\ngo 1.26\n",
+		"pkg/p.go": "package pkg\n\nfunc V() int { return 1 }\n",
+		"pkg/p_test.go": `package pkg
+
+import "testing"
+
+func TestV(t *testing.T) {
+	if V() != 1 {
+		t.Fatal("unexpected")
+	}
+}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./pkg"})
+	cfg.SetPlainWitness(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("plain", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	if _, err := RunWitnesses(context.Background(), tmp, noSeeding{}); err != nil {
+		t.Fatal(err)
+	}
+	recs := witnesscache.Load(t.Context(), tmp).Records
+	if len(recs) != 1 {
+		t.Fatalf("records = %d, want 1", len(recs))
+	}
+	base := recs[0]
+
+	// Older historical variant (installed first): withdrawn observation exclusion.
+	older := base
+	older.ObservationExclusions = []string{"withdrawn-dir"}
+	older.Fingerprint.RuntimeDigest = strings.Repeat("1", 32)
+	if err := witnesscache.Install(t.Context(), tmp, older); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(5 * time.Millisecond)
+
+	// Most recent variant (round == 0, installed second): withdrawn scratch namespace.
+	latest := base
+	latest.ObservationNamespaces = []witnesscache.ScratchNamespace{{Dir: "pkg", Pattern: "withdrawn-*"}}
+	latest.Fingerprint.RuntimeDigest = strings.Repeat("2", 32)
+	if err := witnesscache.Install(t.Context(), tmp, latest); err != nil {
+		t.Fatal(err)
+	}
+	// Remove the original valid record so all remaining variants fail.
+	storeDir, err := witnesscache.StoreDir(tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(storeDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ent := range entries {
+		if ent.IsDir() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(storeDir, ent.Name()))
+		if err == nil && strings.Contains(string(data), base.Fingerprint.RuntimeDigest) {
+			_ = os.Remove(filepath.Join(storeDir, ent.Name()))
+		}
+	}
+
+	res, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotWhy := res.ExecutedReasons["example.com/varwhy/pkg.TestV"]
+	if !strings.Contains(gotWhy, "scratch namespace") {
+		t.Fatalf("ExecutedReasons[TestV] = %q, want primary round-0 scratch-namespace refusal rather than older exclusion refusal", gotWhy)
 	}
 }

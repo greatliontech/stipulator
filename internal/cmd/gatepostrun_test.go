@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -21,7 +22,7 @@ func TestGateRefusesAPostRunProblemOnTheCLI(t *testing.T) {
 	if testing.Short() {
 		t.Skip("resolves a fixture module")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := t.TempDir()
 	// The witness run is the one seam: it reports a registration for
 	// REQ-fix-b, which has an implements binding and no tests-role one —

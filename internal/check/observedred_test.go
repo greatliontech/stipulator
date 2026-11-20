@@ -10,6 +10,7 @@ import (
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/views"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -57,7 +58,7 @@ func TestCheckDefaultObservedUnboundFailureFailsTheCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	plainThenRace := "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n  }\n}\n" + racePolicy
 	files := baseTree(map[string]string{
 		"specs/check.md":               "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
@@ -122,7 +123,7 @@ func TestCheckDefaultReExecutesRandomSeededWitnesses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	files := baseTree(map[string]string{
 		// The real audited harness release: the freshness engine admits
 		// observation through exactly that version, so the served-or-not
@@ -184,7 +185,7 @@ func TestCheckScopedIdsLeaveOutOfScopeIneligibleLegsUnexecuted(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	plainOther := "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./other\"\n  }\n}\n"
 	files := baseTree(map[string]string{
 		"specs/check.md":               "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",

@@ -15,7 +15,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -44,13 +44,6 @@ func writeCheckTree(t *testing.T, slowTest string) string {
 	return dir
 }
 
-// neutralAmbient pins the ambient controls policy normalization reads to
-// a known hermetic state, so host configuration cannot steer these tests.
-func neutralAmbient(t *testing.T) {
-	t.Helper()
-	golang.NeutralAmbient(t)
-}
-
 // TestCheckToolDeadlineNamesExpiredPhaseAndCause pins deadline
 // attribution through the server's check handler: a short deadline over a
 // tree whose policy execution outlasts it yields an error naming the
@@ -61,7 +54,7 @@ func TestCheckToolDeadlineNamesExpiredPhaseAndCause(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeCheckTree(t, "package slow\n\nimport (\n\t\"testing\"\n\t\"time\"\n)\n\n"+
 		"func TestSleeps(t *testing.T) {\n\ttime.Sleep(time.Minute)\n}\n")
 	s := New(dir)
@@ -90,7 +83,7 @@ func TestCheckToolClientCancellationKillsEveryChildProcess(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	// The sleeping test publishes its own pid before blocking: the pid of
 	// the test binary grandchild, exactly the process an orphaning bug
 	// would leave running.
@@ -176,7 +169,7 @@ func TestCheckToolServingPathCancellationKillsChildren(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeCheckTree(t, "package slow\n\nimport (\n\t\"os\"\n\t\"strconv\"\n\t\"testing\"\n\t\"time\"\n)\n\n"+
 		"func TestSleeps(t *testing.T) {\n"+
 		"\tif err := os.WriteFile(\"pid.txt\", []byte(strconv.Itoa(os.Getpid())), 0o644); err != nil {\n\t\tt.Fatal(err)\n\t}\n"+

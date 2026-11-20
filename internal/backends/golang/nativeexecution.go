@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
@@ -67,6 +69,10 @@ func finishNativeRun(ctx context.Context, run *packageRun) {
 	err := a.err
 	if err == nil && a.unit != nil {
 		final, err = closeNativeProcess(ctx, a.unit)
+	}
+	if a.logPath != "" {
+		_ = os.Remove(a.logPath)
+		a.logPath = ""
 	}
 	var account gofresh.ProcessAccount
 	if a.unit != nil {
@@ -285,7 +291,88 @@ func prepareNativeAttempt(ctx context.Context, n *NormalizedInvocation, pkg stri
 	}
 	contribution, err := unit.Register(ctx, build, gofresh.ProcessDescription{
 		Identity: processIdentity(n, producer, pkg), Capture: logPath,
-		BracketPaths: brackets, ExcludedPaths: n.ExcludedPaths, ScratchNamespaces: n.ScratchNamespaces,
+		BracketPaths: brackets, ExcludedPaths: runnerExcludedPaths(n, artifact, runtime), ScratchNamespaces: n.ScratchNamespaces,
 	})
 	return unit, contribution, err
+}
+
+func appendRunnerExclusion(out []string, tree string, raw string) []string {
+	if raw == "" || !filepath.IsAbs(raw) {
+		return out
+	}
+	clean := filepath.Clean(raw)
+	candidates := []string{clean}
+	if resolved, err := filepath.EvalSymlinks(clean); err == nil {
+		if resolved != clean {
+			candidates = append(candidates, resolved)
+		}
+	} else if resolvedParent, pErr := filepath.EvalSymlinks(filepath.Dir(clean)); pErr == nil {
+		resolved := filepath.Join(resolvedParent, filepath.Base(clean))
+		if resolved != clean {
+			candidates = append(candidates, resolved)
+		}
+	}
+	effectiveTree := ""
+	if tree != "" && filepath.IsAbs(tree) {
+		cleanTree := filepath.Clean(tree)
+		effectiveTree = cleanTree
+		if resolvedTree, err := filepath.EvalSymlinks(cleanTree); err == nil {
+			effectiveTree = resolvedTree
+		}
+	}
+	for _, cand := range candidates {
+		if effectiveTree != "" {
+			if rel, err := filepath.Rel(effectiveTree, cand); err == nil && rel != "." && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+				slash := filepath.ToSlash(rel)
+				if !slices.Contains(out, slash) {
+					out = append(out, slash)
+				}
+				continue
+			}
+		}
+		if !slices.Contains(out, cand) {
+			out = append(out, cand)
+		}
+	}
+	return out
+}
+
+func runnerEnvironmentExcludedPaths(n *NormalizedInvocation, env []string) []string {
+	if n == nil {
+		return nil
+	}
+	out := slices.Clone(n.ExcludedPaths)
+	tree := treeRoot(n)
+	if n.TelemetrySource != "" {
+		if cfgHome, ok := lookupEnv(env, "XDG_CONFIG_HOME"); ok && cfgHome != "" {
+			out = appendRunnerExclusion(out, tree, cfgHome)
+		}
+	}
+	return out
+}
+
+func runnerExcludedPaths(n *NormalizedInvocation, artifact *retainedArtifact, runtime *retainedRuntime) []string {
+	var env []string
+	if runtime != nil && runtime.retainedEnvironment != nil {
+		env = runtime.Env
+	} else if n != nil {
+		env = n.Env
+	}
+	out := runnerEnvironmentExcludedPaths(n, env)
+	var tree string
+	if n != nil {
+		tree = treeRoot(n)
+	}
+	if artifact != nil {
+		out = appendRunnerExclusion(out, tree, artifact.root)
+		out = appendRunnerExclusion(out, tree, artifact.Path)
+		out = appendRunnerExclusion(out, tree, artifact.work)
+	}
+	if runtime != nil {
+		if runtime.retainedEnvironment != nil {
+			out = appendRunnerExclusion(out, tree, runtime.root)
+		}
+		out = appendRunnerExclusion(out, tree, runtime.CoverageFragment)
+	}
+	return out
 }

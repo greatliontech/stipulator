@@ -2390,3 +2390,14 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7a64db8960ca38b9108ebcc49270e61a9a4944a172fd00e752f64a09d3bfb30d"
 }
+
+bindings {
+  requirement_id: "REQ-go-invocation-input-files"
+  content_hash: "07c576801d2183d81c6bf13d386eb168b5e43140a4db1b0170f336ca5f391649"
+  source_hash: "5d560a5f60829ba8315be4951149252d54f7897d5b112ad3a268470245d1df18"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestLinkerInputEligibilityGatedByRunnerOwnedTelemetryHome"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "ba8a5bbefbca58ae2f6f4827e5fbd0e13ff1a160600b88bca180d2172038fa57"
+  clause_label: "admission"
+}

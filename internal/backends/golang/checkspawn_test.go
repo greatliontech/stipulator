@@ -11,6 +11,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/author"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
 	"github.com/greatliontech/stipulator/internal/check"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -26,7 +27,7 @@ func TestCheckSpawnsTheResolverChildOnce(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
-	golang.NeutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := t.TempDir()
 	for path, content := range map[string]string{
 		"go.mod":                         "module example.com/spawnfix\n\ngo 1.26.4\n",

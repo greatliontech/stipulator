@@ -105,19 +105,15 @@ func legsReleased(legs map[string]*packageLeg) bool {
 }
 
 func installRecords(ctx context.Context, dir string, records []witnesscache.Record, reasons map[gofresh.Subject]uncacheable) ([]witnesscache.Record, error) {
-	var installed []witnesscache.Record
-	for _, rec := range records {
-		if err := ctx.Err(); err != nil {
-			return installed, err
-		}
-		if err := witnesscache.Install(ctx, dir, rec); err != nil {
-			if ctx.Err() != nil {
-				return installed, ctx.Err()
-			}
+	installed, errs, ctxErr := witnesscache.InstallBatch(ctx, dir, records)
+	if ctxErr != nil {
+		return installed, ctxErr
+	}
+	for i, err := range errs {
+		if err != nil {
+			rec := records[i]
 			reasons[gofresh.Subject{Package: rec.Package, Symbol: rec.Test}] = reasonStoreRefused.with(err.Error())
-			continue
 		}
-		installed = append(installed, rec)
 	}
 	return installed, ctx.Err()
 }

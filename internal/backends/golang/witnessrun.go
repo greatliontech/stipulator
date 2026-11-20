@@ -993,11 +993,14 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 						delete(wg.executedWhy, s)
 						continue
 					}
-					// The last-checked variant's refusal explains the coming
-					// re-execution; a later round's success deletes it.
-					wg.executedWhy[s] = verdictExecutedReason(checked.Verdict.Reason)
-					if err == nil && extended.Verdict.Reason != "" {
-						wg.executedWhy[s] = verdictExecutedReason(extended.Verdict.Reason)
+					// The primary (most recently installed) variant's refusal explains
+					// the coming re-execution; fallback rounds fill in only when no
+					// earlier round recorded one, and a later round's success deletes it.
+					if round == 0 || wg.executedWhy[s] == (executedReason{}) {
+						wg.executedWhy[s] = verdictExecutedReason(checked.Verdict.Reason)
+						if err == nil && extended.Verdict.Reason != "" {
+							wg.executedWhy[s] = verdictExecutedReason(extended.Verdict.Reason)
+						}
 					}
 					if err != nil && ctx.Err() != nil {
 						if abort, reason := classifyFault(err); !abort {
@@ -1019,7 +1022,9 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 			// execution.
 			for round := 0; ; round++ {
 				fps, advanced := roundCandidates(serving, groupCached, leg.chosen, round, declarations, func(s gofresh.Subject, why executedReason) {
-					wg.executedWhy[s] = why
+					if round == 0 || wg.executedWhy[s] == (executedReason{}) {
+						wg.executedWhy[s] = why
+					}
 				})
 				if !advanced {
 					break

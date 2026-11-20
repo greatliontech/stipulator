@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -18,7 +18,7 @@ func TestCLIDefaultDeclarationAdapterKeepsExplicitScope(t *testing.T) {
 		t.Skip("loads declarations through the production CLI adapter")
 	}
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness-typed-load")
-	golang.NeutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := t.TempDir()
 	for name, content := range map[string]string{
 		"go.mod": "module example.com/adapter\n\ngo 1.27\n",

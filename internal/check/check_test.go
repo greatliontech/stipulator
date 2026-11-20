@@ -19,6 +19,7 @@ import (
 	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/resident"
 	"github.com/greatliontech/stipulator/internal/resolutioncache"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/stipulate"
 )
@@ -37,13 +38,6 @@ func writeTree(t *testing.T, files map[string]string) string {
 		}
 	}
 	return dir
-}
-
-// neutralAmbient pins the ambient controls policy normalization reads to
-// a known hermetic state, so host configuration cannot steer these tests.
-func neutralAmbient(t *testing.T) {
-	t.Helper()
-	golang.NeutralAmbient(t)
 }
 
 const (
@@ -177,7 +171,7 @@ func TestCheckSuiteFailureFailsTheCheckWithDiagnostics(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		"red/red_test.go": "package red\n\nimport \"testing\"\n\n" +
 			"func TestAlwaysRed(t *testing.T) {\n\tt.Fatal(\"deliberate fixture failure\")\n}\n",
@@ -219,7 +213,7 @@ func TestCheckCoverageViolationFailsTheCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		"specs/check.md": "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
 	}))
@@ -267,7 +261,7 @@ func TestCheckVerifyProblemFailsTheCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir, marker := markerTree(t, map[string]string{
 		".stipulator/bindings/ghost.textproto": "bindings {\n" +
 			"  requirement_id: \"REQ-fix-ghost\"\n" +
@@ -364,7 +358,7 @@ func TestCheckDuplicatedCoverageCellRefusesBeforeAnyWitness(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	cell := "policy {\n  kind: CLAUSE_KIND_BEHAVIOR\n  keyword: KEYWORD_MUST\n  minimum: MINIMUM_EVIDENCE_WITNESS\n}\n"
 	dir, marker := markerTree(t, map[string]string{
 		".stipulator/manifest.textproto": fixtureManifest + cell + cell,
@@ -396,7 +390,7 @@ func TestCheckUnknownScopeIdRefusesBeforeAnyWitness(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir, marker := markerTree(t, map[string]string{
 		".stipulator/policy.textproto": racePolicy,
 		".stipulator/bindings/may.textproto": "bindings {\n" +
@@ -427,7 +421,7 @@ func TestCheckBrokenBindingFailsTheCheck(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		"specs/check.md": "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
 		".stipulator/bindings/broken.textproto": "bindings {\n" +
@@ -472,7 +466,7 @@ func TestCheckWitnessResolvedGapIsResidueUntilPruned(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	gapPath := ".stipulator/gaps/fix-must.textproto"
 	dir := writeTree(t, baseTree(map[string]string{
 		"specs/check.md":               "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",
@@ -561,7 +555,7 @@ func TestCheckUnfiredManualGapOutlivesGreenWitnesses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	gapPath := ".stipulator/gaps/fix-must.textproto"
 	unfired := "requirement_id: \"REQ-fix-must\"\n" +
 		"reason: \"violated on an unwitnessed path\"\n" +
@@ -690,7 +684,7 @@ func TestCheckReportsPhaseTransitions(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(nil))
 	var events []*stipulatorv1.ProgressEvent
 	rep := progress.New(func(e *stipulatorv1.ProgressEvent) { events = append(events, e) })
@@ -729,7 +723,7 @@ func TestCheckCancelledRunYieldsNoVerdict(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	t.Run("cancelled before the pass", func(t *testing.T) {
 		dir := writeTree(t, baseTree(nil))
 		ctx, cancel := context.WithCancel(context.Background())
@@ -803,7 +797,7 @@ func TestCheckNamesAnEmptyWitnessSelection(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the witness pass over a temporary corpus")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		"specs/check.md": "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
 	}))
@@ -879,7 +873,7 @@ func TestCheckWitnessSelectionProblemAbsentUnderRacePolicy(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the witness pass over a temporary corpus")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		".stipulator/policy.textproto": racePolicy,
 		"specs/check.md":               "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
@@ -914,7 +908,7 @@ func TestCheckFullFormNamesRaceUncoveredSubjects(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes the whole policy over a temporary corpus")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		"specs/check.md": "# Check\n\n**REQ-fix-bound** (behavior): The fixture MUST double.\n",
 		".stipulator/bindings/bound.textproto": "bindings {\n" +
@@ -954,7 +948,7 @@ func TestCheckMultiplyNonRaceSelectedSubjectsAreOutside(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the witness pass over a temporary corpus")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	twoPlain := "invocations {\n  name: \"a\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n  }\n}\ninvocations {\n  name: \"b\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./ok\"\n  }\n}\n"
 	dir := writeTree(t, baseTree(map[string]string{
 		".stipulator/policy.textproto": twoPlain,
@@ -1011,7 +1005,7 @@ func TestCheckIneligibleLegOutcomesDoNotMaskTheSelectionCause(t *testing.T) {
 		{"skip, health-judged form", "t.Skip(\"deliberately skipped\")", true},
 	} {
 		t.Run(c.name, func(t *testing.T) {
-			neutralAmbient(t)
+			testenv.NeutralAmbient(t)
 			dir := writeTree(t, baseTree(map[string]string{
 				".stipulator/policy.textproto": twoPlain,
 				"ok/ok_test.go": "package ok\n\nimport \"testing\"\n\n" +
@@ -1048,7 +1042,7 @@ func TestCheckPlainWitnessAdmissionGrantsPlainTierWitnesses(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the witness pass over a temporary corpus")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	plainWitnessPolicy := "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n  }\n}\n"
 	dir := writeTree(t, baseTree(map[string]string{
 		".stipulator/policy.textproto": plainWitnessPolicy,
@@ -1123,7 +1117,7 @@ func TestCheckRaceLegPrecedenceOverPlainAdmission(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the witness pass over a temporary corpus")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	mixedPolicy := "invocations {\n  name: \"plain\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n  }\n}\n" +
 		"invocations {\n  name: \"race\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n"
 	dir := writeTree(t, baseTree(map[string]string{
@@ -1167,7 +1161,7 @@ func TestCheckTierFlipNeverServesCrossTier(t *testing.T) {
 	if testing.Short() {
 		t.Skip("runs the witness pass over a temporary corpus")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	plainWitnessPolicy := "invocations {\n  name: \"suite\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    plain_witness: true\n  }\n}\n"
 	raceSuitePolicy := "invocations {\n  name: \"suite\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n    race: true\n  }\n}\n"
 	dir := writeTree(t, baseTree(map[string]string{
@@ -1265,7 +1259,7 @@ func TestCheckPublishesAndServesResolutionRecords(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	// The witness asserts purity in source: its capture carries a tier
 	// the resolution store does not serve, which the publisher projects
 	// away — a store refusing the batch on it published nothing.
@@ -1342,7 +1336,7 @@ func TestCheckReleasesTheResolverChildBeforeExecution(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		"ok/ok_test.go":                    "package ok\n\nimport \"testing\"\n\n//gofresh:pure\nfunc TestDouble(t *testing.T) { Double(2) }\n",
 		"specs/check.md":                   "# Check\n\n**REQ-fix-must** (behavior): The fixture MUST pass.\n",

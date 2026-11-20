@@ -5,13 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/internal/witnesscache"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
 func TestWitnessCacheCheckCompositionHasOneRootHome(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-witness-cache-refusals", "REQ-mcp-response-contract")
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := writeTree(t, baseTree(map[string]string{
 		".stipulator/policy.textproto":       "invocations { name: \"plain\" timeout { seconds: 300 } go { packages: \"./...\" plain_witness: true } }\n",
 		".stipulator/bindings/fix.textproto": "bindings { requirement_id: \"REQ-fix-may\" backend: \"go\" symbol: \"example.com/checkfix/ok.TestDouble\" role: BINDING_ROLE_TESTS }\n",

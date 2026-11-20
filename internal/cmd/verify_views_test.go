@@ -14,6 +14,7 @@ import (
 	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/backends/golang"
+	"github.com/greatliontech/stipulator/internal/testenv"
 	"github.com/greatliontech/stipulator/internal/verify"
 	"github.com/greatliontech/stipulator/internal/wire"
 	"github.com/greatliontech/stipulator/stipulate"
@@ -52,7 +53,7 @@ func TestVerifyBindingsViewAnswersWhatClaimsThisSymbol(t *testing.T) {
 	if testing.Short() {
 		t.Skip("executes a race-instrumented policy over a fixture tree")
 	}
-	neutralAmbient(t)
+	testenv.NeutralAmbient(t)
 	dir := t.TempDir()
 	// The oracle for "did a witness run" is in-process: the verb's one
 	// witnessing entry is counted, not a file a child test writes (a

@@ -758,47 +758,6 @@ func validPurity(value string) bool {
 	}
 }
 
-// Install atomically writes one record's variant file and bounds the
-// identity's variant set: beyond variantBound, the least recently
-// installed variants are evicted — eviction costs only execution.
-func Install(ctx context.Context, dir string, rec Record) error {
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	store, err := open(dir)
-	if err != nil {
-		return err
-	}
-	// The name first: a fingerprint Gofresh's encoder refuses installs
-	// nothing — not even its compartment's ledger.
-	name, err := fileName(rec)
-	if err != nil {
-		return err
-	}
-	lock, err := store.Lock(ctx)
-	if err != nil {
-		return err
-	}
-	defer lock.Close()
-	// The ledger lands before the record: a record present in the store
-	// finds its compartment's ledger present too.
-	if err := installLedger(ctx, store, rec); err != nil {
-		return err
-	}
-	e := entry{Version: version, Group: rec.Group, Package: rec.Package, Test: rec.Test, Fingerprint: rec.Fingerprint, Outcomes: rec.Outcomes, Regs: rec.Regs, ObservationExclusions: rec.ObservationExclusions, ObservationNamespaces: rec.ObservationNamespaces}
-	data, err := json.MarshalIndent(e, "", "  ")
-	if err != nil {
-		return err
-	}
-	// A torn variant costs only its own record through the per-file
-	// refusal leg, and the store's atomic install makes even that
-	// window vanish.
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	return store.Install(variantBound, recordstore.Entry{Name: name, Data: data})
-}
-
 // Key is the record's identity.
 func (r Record) Key() string { return r.Package + "." + r.Test }
 
@@ -836,14 +795,15 @@ func gcSince(ctx context.Context, dir string, live func(pkg, test string) bool, 
 	defer lock.Close()
 	referenced := map[string]bool{}
 	removed, kept, err = store.Sweep(ctx, func(name string, data []byte) bool {
-		rec, _, ok := decodeRecord(name, data)
-		if !ok || (liveGroup != nil && !liveGroup(rec.Group)) {
-			// What the loader permanently refuses — unreadable,
-			// identity-less, of a prior version, field-blind, misnamed —
-			// or a retired coordinate no current invocation produces:
-			// cost with no servable evidence behind it.
+		assessed := loadEntry(name, data, dir)
+		if assessed.record == nil || (liveGroup != nil && !liveGroup(assessed.record.Group)) {
+			// What Load permanently refuses — unreadable, identity-less, of a
+			// prior envelope or manifest version, invalid evidence structure,
+			// field-blind, misnamed — or a retired coordinate no current
+			// invocation produces: cost with no servable evidence behind it.
 			return false
 		}
+		rec := *assessed.record
 		if !live(rec.Package, rec.Test) {
 			return false
 		}
@@ -852,6 +812,28 @@ func gcSince(ctx context.Context, dir string, live func(pkg, test string) bool, 
 	})
 	if ctx.Err() != nil {
 		return removed, kept, ctx.Err()
+	}
+	if err != nil {
+		// One or more refused/unlive record files failed removal and remain on
+		// disk: retain their ledger coordinates so no surviving record loses its
+		// compartment ledger (REQ-evidence-witness-cache-refusals).
+		surviving, scanErr := store.Names()
+		if scanErr != nil {
+			return removed, kept, err
+		}
+		for _, name := range surviving {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return removed, kept, ctxErr
+			}
+			data, readErr := store.Read(name)
+			if readErr != nil {
+				return removed, kept, err
+			}
+			fields, _ := envelopeFields(data)
+			if digest := ledgerReference(fields); digest != "" {
+				referenced[digest] = true
+			}
+		}
 	}
 	if beforeLedgerSweep != nil {
 		beforeLedgerSweep()
@@ -863,124 +845,4 @@ func gcSince(ctx context.Context, dir string, live func(pkg, test string) bool, 
 		return removed, kept, cancelErr
 	}
 	return removed, kept, err
-}
-
-// PruneGlobal performs global usage/preview and bounded reclamation across all
-// witness stores and their ledger substores under the user cache directory.
-func PruneGlobal(ctx context.Context, opts recordstore.PruneOptions) (recordstore.PruneReport, error) {
-	return recordstore.PruneKind(ctx, "witnesses", opts, func(ctx context.Context, s recordstore.Store, abandoned, dryRun bool) (used, reclaimed int64, removed, skipped int, onEvict recordstore.RecordEvictHook, err error) {
-		ls := ledgerStore(s)
-		entries, readErr := os.ReadDir(ls.Path())
-		if os.IsNotExist(readErr) {
-			return 0, 0, 0, 0, nil, nil
-		}
-		if readErr != nil {
-			return 0, 0, 0, 1, nil, readErr
-		}
-		refCount := map[string]int{}
-		refsByRecord := map[string][]string{}
-		if !abandoned {
-			names, _ := s.Names()
-			for _, name := range names {
-				if cancelErr := ctx.Err(); cancelErr != nil {
-					return 0, 0, 0, 0, nil, cancelErr
-				}
-				data, err := s.Read(name)
-				if err != nil {
-					continue
-				}
-				rec, digest, ok := decodeRecord(name, data)
-				var keys []string
-				if digest != "" {
-					keys = append(keys, digest)
-				}
-				if ok {
-					if coordKey := coordinateOf(rec).key(); coordKey != "" && coordKey != digest {
-						keys = append(keys, coordKey)
-					}
-				}
-				if len(keys) > 0 {
-					refsByRecord[name] = keys
-					for _, k := range keys {
-						refCount[k]++
-					}
-				}
-			}
-		}
-		liveLedgerSize := map[string]int64{}
-		liveLedgerPath := map[string]string{}
-		for _, e := range entries {
-			if cancelErr := ctx.Err(); cancelErr != nil {
-				return used, reclaimed, removed, skipped, nil, cancelErr
-			}
-			if e.IsDir() || strings.HasPrefix(e.Name(), ".") || !strings.HasSuffix(e.Name(), ".json") {
-				continue
-			}
-			info, infoErr := e.Info()
-			if infoErr != nil {
-				if !os.IsNotExist(infoErr) {
-					skipped++
-				}
-				continue
-			}
-			size := info.Size()
-			used += size
-			key := strings.TrimSuffix(e.Name(), ".json")
-			full := filepath.Join(ls.Path(), e.Name())
-			if !abandoned && refCount[key] > 0 {
-				liveLedgerSize[key] = size
-				liveLedgerPath[key] = full
-				continue
-			}
-			if dryRun {
-				reclaimed += size
-				removed++
-				continue
-			}
-			if rmErr := os.Remove(full); rmErr != nil && !os.IsNotExist(rmErr) {
-				skipped++
-				continue
-			}
-			reclaimed += size
-			removed++
-		}
-		if abandoned && !dryRun {
-			_ = os.Remove(ls.Path())
-		}
-		if !abandoned && len(liveLedgerSize) > 0 {
-			onEvict = func(ctx context.Context, recordName string, dryRun bool) (evictReclaimed int64, evictRemoved, evictSkipped int, evictErr error) {
-				keys := refsByRecord[recordName]
-				if len(keys) == 0 {
-					return 0, 0, 0, nil
-				}
-				delete(refsByRecord, recordName)
-				for _, k := range keys {
-					refCount[k]--
-					if refCount[k] > 0 {
-						continue
-					}
-					full, ok := liveLedgerPath[k]
-					if !ok {
-						continue
-					}
-					if cancelErr := ctx.Err(); cancelErr != nil {
-						return evictReclaimed, evictRemoved, evictSkipped, cancelErr
-					}
-					size := liveLedgerSize[k]
-					delete(liveLedgerPath, k)
-					delete(liveLedgerSize, k)
-					if !dryRun {
-						if rmErr := os.Remove(full); rmErr != nil && !os.IsNotExist(rmErr) {
-							evictSkipped++
-							continue
-						}
-					}
-					evictReclaimed += size
-					evictRemoved++
-				}
-				return evictReclaimed, evictRemoved, evictSkipped, nil
-			}
-		}
-		return used, reclaimed, removed, skipped, onEvict, nil
-	})
 }

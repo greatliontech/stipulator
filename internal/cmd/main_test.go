@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+
+	"github.com/greatliontech/stipulator/internal/testenv"
 )
 
 var (
@@ -42,9 +44,10 @@ func cliBinary(t *testing.T) string {
 	return cliBinPath
 }
 
-// TestMain removes the shared CLI binary directory after all tests complete.
+// TestMain runs the suite under isolated XDG cache/state homes and removes the
+// shared CLI binary directory after all tests complete.
 func TestMain(m *testing.M) {
-	code := m.Run()
+	code := testenv.IsolateMain(m)
 	if cliBinDir != "" {
 		_ = os.RemoveAll(cliBinDir)
 	}
