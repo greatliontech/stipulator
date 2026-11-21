@@ -3038,3 +3038,115 @@ func TestV(t *testing.T) {
 		t.Fatalf("ExecutedReasons[TestV] = %q, want primary round-0 scratch-namespace refusal rather than older exclusion refusal", gotWhy)
 	}
 }
+
+func TestExecuteSelectionAndRunWitnessesBatchFuzzUnderAssumePure(t *testing.T) {
+	stipulate.Covers(t, "REQ-go-fuzz-exploration", "REQ-evidence-witness-freshness")
+	if testing.Short() {
+		t.Skip("compiles and executes mixed Test* and Fuzz* witness selections")
+	}
+	neutralAmbient(t)
+	t.Setenv("HOME", t.TempDir())
+	tmp := writeModule(t, map[string]string{
+		"go.mod":                          "module example.com/fuzzbatch\n\ngo 1.26\n",
+		"pkg/fixture.txt":                 "ok\n",
+		"pkg/testdata/fuzz/FuzzOne/seed1": "go test fuzz v1\nstring(\"committed\")\n",
+		"pkg/p_test.go": `package pkg
+
+import (
+	"os"
+	"testing"
+)
+
+func TestReadsFixture(t *testing.T) {
+	if _, err := os.ReadFile("fixture.txt"); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func FuzzOne(f *testing.F) {
+	f.Add("inline")
+	f.Fuzz(func(t *testing.T, s string) {
+		if s == "" {
+			t.Skip()
+		}
+	})
+}
+
+func FuzzTwo(f *testing.F) {
+	f.Add(1)
+	f.Fuzz(func(t *testing.T, n int) {
+		_ = n + 1
+	})
+}
+`,
+	})
+
+	discoveredInvocation := func(pol *stipulatorv1.TestPolicy) *NormalizedInvocation {
+		t.Helper()
+		pc, err := CapturePolicy(t.Context(), tmp, pol)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := pc.ConfigureExecution(false, nil); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pc.discover(t.Context()); err != nil {
+			t.Fatal(err)
+		}
+		return pc.normalized[0]
+	}
+
+	// 1. Under AssumePure=true, Test* and Fuzz* execute in a single batch process
+	// (no mixed_fuzz solo process spawns), replay committed seeds, publish, and serve warm.
+	pureCfg := &stipulatorv1.GoInvocationConfig{}
+	pureCfg.SetPackages([]string{"./pkg"})
+	pureCfg.SetPlainWitness(true)
+	pureCfg.SetAssumePure(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("pure", pureCfg)})
+	writePolicyRecord(t, tmp, p)
+
+	normPure := discoveredInvocation(p)
+	sel := TestSelection{"example.com/fuzzbatch/pkg": {"TestReadsFixture", "FuzzOne", "FuzzTwo"}}
+	selRes, err := ExecuteSelection(t.Context(), normPure, sel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(selRes.Processes) != 1 {
+		t.Fatalf("AssumePure=true ExecuteSelection spawned %d processes, want 1 batched process: %+v", len(selRes.Processes), selRes.Processes)
+	}
+	if findTest(selRes.Tests, "example.com/fuzzbatch/pkg", "FuzzOne/seed1") == nil {
+		t.Fatalf("batched FuzzOne did not replay committed seed1: %+v", selRes.Tests)
+	}
+
+	cold, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cold.Degraded != "" || cold.Ran != 3 || cold.Uncached != 0 {
+		t.Fatalf("cold AssumePure RunWitnesses = (degraded=%q, ran=%d, uncached=%d, reasons=%v), want 3/0", cold.Degraded, cold.Ran, cold.Uncached, cold.UncacheableReasons)
+	}
+	warm, err := RunWitnesses(context.Background(), tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if warm.Degraded != "" || warm.Fresh != 3 || warm.Ran != 0 {
+		t.Fatalf("warm AssumePure RunWitnesses = (degraded=%q, fresh=%d, ran=%d), want 3 fresh / 0 ran", warm.Degraded, warm.Fresh, warm.Ran)
+	}
+
+	// 2. Under AssumePure=false, Fuzz* targets are still isolated into solo processes
+	// so (*testing.F).Fuzz cannot block sibling Test* observation support.
+	impureCfg := &stipulatorv1.GoInvocationConfig{}
+	impureCfg.SetPackages([]string{"./pkg"})
+	impureCfg.SetPlainWitness(true)
+	impurePol := &stipulatorv1.TestPolicy{}
+	impurePol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("impure", impureCfg)})
+	normImpure := discoveredInvocation(impurePol)
+	impureRes, err := ExecuteSelection(t.Context(), normImpure, sel)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(impureRes.Processes) != 3 {
+		t.Fatalf("AssumePure=false ExecuteSelection spawned %d processes, want 3 (1 Test batch + 2 isolated Fuzz solos): %+v", len(impureRes.Processes), impureRes.Processes)
+	}
+}

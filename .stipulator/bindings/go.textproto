@@ -2401,3 +2401,33 @@ bindings {
   shape_hash: "ba8a5bbefbca58ae2f6f4827e5fbd0e13ff1a160600b88bca180d2172038fa57"
   clause_label: "admission"
 }
+
+bindings {
+  requirement_id: "REQ-go-build-selections"
+  content_hash: "1184b7a3e61c0c1e97434e1235867f5fc66fce432a4e1539a230971772f2c6e4"
+  source_hash: "fca1bda61d0df83fcd4836d962aa287bbbb2b820e42f7f010e8a2f4230d8055b"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMemberSelectionsDeduplicateAndFilterSecondaryOpeningCaptures"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a66d00236ae97385bf4bbf1f01f724c973948bab9b56538c6918050957b2541b"
+}
+
+bindings {
+  requirement_id: "REQ-go-workspace"
+  content_hash: "b4fea94c7d3c87262a3ed75f69759348b8daa31cecd9cf030bcb27584587a82d"
+  source_hash: "68a92da6cea9d897be412813f2ef9dc04d227d43fbb5e2c4eb7d8f119481d1cc"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMemberSelectionsDeduplicateAndFilterSecondaryOpeningCaptures"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a66d00236ae97385bf4bbf1f01f724c973948bab9b56538c6918050957b2541b"
+}
+
+bindings {
+  requirement_id: "REQ-go-fuzz-exploration"
+  content_hash: "ff4d0cf496726ff9dda753643f82d16b13bdd259268a4c1d6da4d39759e6e674"
+  source_hash: "39146f9b7b718bd3bdfdc54984b620963400fe3398fb95c1dc3350464afb0b20"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExecuteSelectionAndRunWitnessesBatchFuzzUnderAssumePure"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7cae1dad795f6991b89b62724d9f8c7a4c6b106472c8e6a821cdc515950a8816"
+}

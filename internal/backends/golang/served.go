@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -139,7 +140,8 @@ type Served struct {
 	set map[string]bool
 	// inventory is metadata only: package boundaries are established
 	// before capture and typed scope, never guessed from a dot position.
-	inventory map[string]map[string]bool
+	inventory      map[string]map[string]bool
+	inventoryFiles map[string]map[string][]string
 	// unserved is every requested symbol without a served record — the
 	// typed load's scope and the opening capture's subjects.
 	unserved []string
@@ -296,15 +298,23 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 		sort.Strings(names)
 		closingEndpoint := newSelectionEndpoint(ctx, abs, sels)
 		closing, err := s.captureSourceCertificates(closingEndpoint, names)
+		revoked := false
 		for _, name := range names {
 			closed, ok := closing[name]
 			if !ok {
 				delete(s.served, name)
 				s.reasons[name] = resolutionNoClosingCertificate.with("")
+				revoked = true
 			} else if sourceCertificateMoved(s.checkingCertificates[name], closed) {
 				delete(s.served, name)
 				s.reasons[name] = resolutionSourceMovedDuringServing.with("")
+				revoked = true
 			}
+		}
+		if revoked {
+			clear(s.checkedCaptures)
+			clear(s.checkedUnknown)
+			s.checkingCertificates = nil
 		}
 		if err != nil {
 			s.degraded = append(s.degraded, "closing source certificate: "+err.Error())
@@ -374,6 +384,7 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 		checkedUnknown:  map[string]map[gofresh.Subject]bool{},
 		answers:         map[string]symbolAnswer{},
 		pending:         map[string][]string{},
+		refusals:        map[string]string{},
 		reasons:         map[string]resolutionReason{},
 	}, nil
 }
@@ -445,23 +456,50 @@ func (s *Served) openingCapture() {
 		}
 		return endpoint
 	}
-	keys := make([]string, 0, len(s.sels))
+	remaining := slices.Clone(s.unserved)
 	for _, sel := range s.sels {
-		keys = append(keys, sel.key())
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
+		key := sel.key()
+		var fps map[gofresh.Subject]gofresh.Fingerprint
+		var unknown map[gofresh.Subject]bool
+		var ok bool
 		if canReuseInitial {
-			if fps, unknown, ok := s.reuseCheckedCapture(key, s.unserved); ok {
-				s.opening[key] = fps
-				s.openingUnknown[key] = unknown
-				continue
-			}
+			fps, unknown, ok = s.reuseCheckedCapture(key, remaining)
 		}
-		fps, unknown, ok := s.captureUnder(getEndpoint(), key, s.unserved, "opening")
+		if !ok {
+			fps, unknown, ok = s.captureUnder(getEndpoint(), key, remaining, "opening")
+		}
 		if ok {
 			s.opening[key] = fps
 			s.openingUnknown[key] = unknown
+			if sel.isDefault() && captureForTest == nil && (len(fps) > 0 || (len(unknown) > 0 && !s.reopened)) {
+				var defaultDecls map[string]map[string]bool
+				kept := remaining[:0]
+				for _, sym := range remaining {
+					subject, hasSubj := s.subjectOf(sym)
+					if !hasSubj {
+						kept = append(kept, sym)
+						continue
+					}
+					if _, captured := fps[subject]; captured {
+						continue
+					}
+					if unknown[subject] && !s.reopened {
+						if defaultDecls == nil {
+							defaultDecls = map[string]map[string]bool{}
+						}
+						decls, parsed := defaultDecls[subject.Package]
+						if !parsed {
+							decls = parseNonCallableSymbols(s.inventoryFiles[key][subject.Package])
+							defaultDecls[subject.Package] = decls
+						}
+						if decls[subject.Symbol] {
+							continue
+						}
+					}
+					kept = append(kept, sym)
+				}
+				remaining = kept
+			}
 		}
 	}
 	if canReuseInitial {
@@ -519,6 +557,50 @@ func (s *Served) reuseCheckingCertificates(symbols []string) (map[string]resolut
 	return certs, true
 }
 
+func narrowAndCapture(ctx context.Context, engine *gofresh.Session, subjects []gofresh.Subject, onGone func(gofresh.Subject)) (map[gofresh.Subject]gofresh.Fingerprint, map[gofresh.Subject]bool, error) {
+	unknownSubjects := map[gofresh.Subject]bool{}
+	var view *gofresh.Snapshot
+	for len(subjects) > 0 {
+		var err error
+		view, err = engine.Snapshot(ctx, subjects, gofresh.CodeResult)
+		var unknown *gofresh.UnknownSubjectsError
+		if errors.As(err, &unknown) {
+			gone := map[gofresh.Subject]bool{}
+			for _, subject := range unknown.Subjects {
+				gone[subject] = true
+				unknownSubjects[subject] = true
+				if onGone != nil {
+					onGone(subject)
+				}
+			}
+			if len(gone) == 0 {
+				return nil, nil, err
+			}
+			kept := subjects[:0]
+			for _, subject := range subjects {
+				if !gone[subject] {
+					kept = append(kept, subject)
+				}
+			}
+			subjects = kept
+			continue
+		}
+		if err != nil {
+			return nil, nil, err
+		}
+		break
+	}
+	fps := map[gofresh.Subject]gofresh.Fingerprint{}
+	if len(subjects) > 0 {
+		var err error
+		fps, err = view.CaptureBatch(ctx)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return fps, unknownSubjects, nil
+}
+
 // captureUnder builds a view over the symbols' subjects under one
 // selection, narrowing the subjects the selected source does not
 // declare, and captures their fingerprints alongside the narrowed
@@ -528,11 +610,6 @@ func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols [
 		return nil, nil, false
 	}
 	selected, err := endpoint.selected(key)
-	if err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-		return nil, nil, false
-	}
-	engine, err := selectionEngine(s.ctx, selected, s.sample)
 	if err != nil {
 		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
 		return nil, nil, false
@@ -548,43 +625,22 @@ func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols [
 		}
 		subjects = append(subjects, subject)
 	}
-	unknownSubjects := map[gofresh.Subject]bool{}
-	var view *gofresh.Snapshot
-	for len(subjects) > 0 {
-		view, err = engine.Snapshot(s.ctx, subjects, gofresh.CodeResult)
-		var unknown *gofresh.UnknownSubjectsError
-		if errors.As(err, &unknown) {
-			gone := map[gofresh.Subject]bool{}
-			for _, subject := range unknown.Subjects {
-				gone[subject] = true
-				unknownSubjects[subject] = true
-			}
-			if len(gone) == 0 {
-				s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-				return nil, nil, false
-			}
-			kept := subjects[:0]
-			for _, subject := range subjects {
-				if !gone[subject] {
-					kept = append(kept, subject)
-				}
-			}
-			subjects = kept
-			continue
-		}
-		if err != nil {
+	if len(subjects) == 0 && captureForTest == nil {
+		if err := checkSelectionMembers(s.ctx, selected.root, selected.env, selected.members, selected.selection.toolchain, s.sample); err != nil {
 			s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
 			return nil, nil, false
 		}
-		break
+		return map[gofresh.Subject]gofresh.Fingerprint{}, map[gofresh.Subject]bool{}, true
 	}
-	fps := map[gofresh.Subject]gofresh.Fingerprint{}
-	if len(subjects) > 0 {
-		fps, err = view.CaptureBatch(s.ctx)
-		if err != nil {
-			s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-			return nil, nil, false
-		}
+	engine, err := selectionEngine(s.ctx, selected, s.sample)
+	if err != nil {
+		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
+		return nil, nil, false
+	}
+	fps, unknownSubjects, err := narrowAndCapture(s.ctx, engine, subjects, nil)
+	if err != nil {
+		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
+		return nil, nil, false
 	}
 	if captureForTest != nil {
 		fps = captureForTest(phase, fps)
@@ -611,15 +667,11 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
 		return
 	}
-	engine, err := selectionEngine(s.ctx, selected, s.sample)
-	if err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-		return
-	}
-	subjects := make([]gofresh.Subject, 0, len(recs))
+	probeSubjects := make([]gofresh.Subject, 0, len(recs))
+	callableSubjects := make([]gofresh.Subject, 0, len(recs))
+	var validNonCallables []resolutioncache.Record
 	bySubject := map[gofresh.Subject]resolutioncache.Record{}
 	seenSubject := map[gofresh.Subject]bool{}
-	var nonCallables []resolutioncache.Record
 	for _, rec := range recs {
 		subject, ok := recordSubject(rec)
 		if !ok {
@@ -632,86 +684,68 @@ func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []
 		}
 		seenSubject[subject] = true
 		if rec.Fingerprint == (gofresh.Fingerprint{}) {
-			nonCallables = append(nonCallables, rec)
-			continue
-		}
-		subjects = append(subjects, subject)
-		bySubject[subject] = rec
-	}
-	allGone := map[gofresh.Subject]bool{}
-	var view *gofresh.Snapshot
-	for len(subjects) > 0 {
-		view, err = engine.Snapshot(s.ctx, subjects, gofresh.CodeResult)
-		var unknown *gofresh.UnknownSubjectsError
-		if errors.As(err, &unknown) {
-			// Vanished since they were recorded: stale, resolved
-			// typed, which answers not-found for them.
-			gone := map[gofresh.Subject]bool{}
-			for _, subject := range unknown.Subjects {
-				gone[subject] = true
-				allGone[subject] = true
-				s.reasons[bySubject[subject].Symbol] = resolutionNoLongerDeclared.with("")
-			}
-			if len(gone) == 0 {
-				s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-				return
-			}
-			kept := subjects[:0]
-			for _, subject := range subjects {
-				if !gone[subject] {
-					kept = append(kept, subject)
-				}
-			}
-			subjects = kept
-			continue
-		}
-		if err != nil {
-			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-			return
-		}
-		break
-	}
-	if len(subjects) == 0 && len(allGone) > 0 {
-		s.checkedCaptures[key] = map[gofresh.Subject]gofresh.Fingerprint{}
-		s.checkedUnknown[key] = allGone
-	}
-	if len(subjects) > 0 {
-		// Equivalence is of the SOURCE closure alone: the current capture's
-		// closure tiers — maximal closure, toolchain, build configuration —
-		// must equal the record's. gofresh's result-serving verdict judges
-		// more (dynamic state, purity, runtime inputs), which a resolution
-		// never depends on, so it is not consulted here.
-		current, err := view.CaptureBatch(s.ctx)
-		if err != nil {
-			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-			return
-		}
-		s.checkedCaptures[key] = current
-		s.checkedUnknown[key] = allGone
-		for _, subject := range subjects {
-			rec := bySubject[subject]
-			fp, captured := current[subject]
-			if !captured {
-				s.reasons[rec.Symbol] = resolutionNoCurrentCapture.with("")
-				continue
-			}
-			if why := closureMovedReason(rec.Fingerprint, fp); why != (resolutionReason{}) {
-				s.reasons[rec.Symbol] = why
-				continue
-			}
-			certificate, ok := s.checkingCertificates[rec.Symbol]
-			if !ok {
+			certificate, hasCert := s.checkingCertificates[rec.Symbol]
+			if !hasCert {
 				s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
+				probeSubjects = append(probeSubjects, subject)
 				continue
 			}
 			if sourceCertificateMoved(rec.Certificate, certificate) {
 				s.reasons[rec.Symbol] = resolutionSourceDependencies.with("")
+				probeSubjects = append(probeSubjects, subject)
 				continue
 			}
-			s.served[rec.Symbol] = rec
+			validNonCallables = append(validNonCallables, rec)
+			continue
+		}
+		probeSubjects = append(probeSubjects, subject)
+		callableSubjects = append(callableSubjects, subject)
+		bySubject[subject] = rec
+	}
+	var current map[gofresh.Subject]gofresh.Fingerprint
+	var allGone map[gofresh.Subject]bool
+	if len(probeSubjects) == 0 {
+		if err := checkSelectionMembers(s.ctx, selected.root, selected.env, selected.members, selected.selection.toolchain, s.sample); err != nil {
+			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
+			return
+		}
+		current = map[gofresh.Subject]gofresh.Fingerprint{}
+		allGone = map[gofresh.Subject]bool{}
+	} else {
+		engine, err := selectionEngine(s.ctx, selected, s.sample)
+		if err != nil {
+			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
+			return
+		}
+		current, allGone, err = narrowAndCapture(s.ctx, engine, probeSubjects, func(subject gofresh.Subject) {
+			if rec, isCallable := bySubject[subject]; isCallable {
+				s.reasons[rec.Symbol] = resolutionNoLongerDeclared.with("")
+			}
+		})
+		if err != nil {
+			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
+			return
 		}
 	}
-	for _, rec := range nonCallables {
+	s.checkedCaptures[key] = current
+	s.checkedUnknown[key] = allGone
+	for _, rec := range validNonCallables {
+		s.served[rec.Symbol] = rec
+	}
+	for _, subject := range callableSubjects {
+		if allGone[subject] {
+			continue
+		}
+		rec := bySubject[subject]
+		fp, captured := current[subject]
+		if !captured {
+			s.reasons[rec.Symbol] = resolutionNoCurrentCapture.with("")
+			continue
+		}
+		if why := closureMovedReason(rec.Fingerprint, fp); why != (resolutionReason{}) {
+			s.reasons[rec.Symbol] = why
+			continue
+		}
 		certificate, ok := s.checkingCertificates[rec.Symbol]
 		if !ok {
 			s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
@@ -1188,30 +1222,6 @@ func (s *Served) publishSelection(key string, symbols []string) {
 		return
 	}
 	pubStart := time.Now()
-	// Every symbol's class and refusal, from the typed backend, before the
-	// capture: the record carries the whole answer set.
-	var unclassed []string
-	for _, symbol := range symbols {
-		if !s.answers[symbol].classed {
-			unclassed = append(unclassed, symbol)
-		}
-	}
-	for _, symbol := range unclassed {
-		s.classify(symbol)
-	}
-	if s.refusals == nil {
-		s.refusals = map[string]string{}
-	}
-	var unrefused []string
-	for _, symbol := range symbols {
-		if _, asked := s.refusals[symbol]; !asked {
-			unrefused = append(unrefused, symbol)
-		}
-	}
-	if len(unrefused) > 0 {
-		refusals, _ := s.backend.NeverServe(unrefused)
-		s.refusals = mergeRefusals(s.refusals, unrefused, refusals)
-	}
 	endpoint := newSelectionEndpoint(s.ctx, s.dir, s.sels)
 	closing, closingUnknown, ok := s.captureUnder(endpoint, key, symbols, "publish")
 	if !ok {

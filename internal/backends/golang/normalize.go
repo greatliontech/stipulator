@@ -278,24 +278,12 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 	n.Dir = abs
 
 	// Workspace mode: absent derives from the workspace declaration.
-	work := filepath.Join(dir, "go.work")
-	_, workErr := os.Stat(work)
-	hasWork := workErr == nil
-	switch cfg.GetWorkspaceMode() {
-	case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_WORKSPACE:
-		if !hasWork {
-			return nil, fmt.Errorf("invocation %q: workspace_mode WORKSPACE but the tree declares no go.work", inv.GetName())
-		}
-		n.WorkspaceOn = true
-	case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_OFF:
-		n.WorkspaceOn = false
-	default:
-		n.WorkspaceOn = hasWork
+	workOn, work, err := resolveWorkspaceMode(dir, cfg.GetWorkspaceMode())
+	if err != nil {
+		return nil, fmt.Errorf("invocation %q: %w", inv.GetName(), err)
 	}
+	n.WorkspaceOn = workOn
 	if n.WorkspaceOn {
-		if workAbs, err := filepath.Abs(work); err == nil {
-			work = workAbs
-		}
 		env = gotool.SetEnv(env, "GOWORK", work)
 	} else {
 		env = gotool.SetEnv(env, "GOWORK", "off")

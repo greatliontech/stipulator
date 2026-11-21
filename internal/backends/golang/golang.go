@@ -476,6 +476,20 @@ func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 	seen := map[string]bool{selections[0].key(): true}
 	var declared []buildSelection
 	var crossPlatform []string
+	var wsMembersLoaded bool
+	var wsMemberSet map[string]bool
+	isWorkspaceMember := func(rel string) bool {
+		if !wsMembersLoaded {
+			wsMembersLoaded = true
+			if members, mErr := workspaceMembers(dir); mErr == nil {
+				wsMemberSet = make(map[string]bool, len(members))
+				for _, m := range members {
+					wsMemberSet[m] = true
+				}
+			}
+		}
+		return wsMemberSet[filepath.FromSlash(rel)]
+	}
 	for _, inv := range p.GetInvocations() {
 		cfg := inv.GetGo()
 		if cfg == nil {
@@ -521,16 +535,15 @@ func policyBuildSelections(dir string) ([]buildSelection, []string, error) {
 				return nil, nil, fmt.Errorf("resolution module_root %q: %w", cfg.GetModuleRoot(), err)
 			}
 		}
-		switch cfg.GetWorkspaceMode() {
-		case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED, stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_OFF:
-		case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_WORKSPACE:
-			if _, err := os.Stat(filepath.Join(dir, "go.work")); err != nil {
-				return nil, nil, fmt.Errorf("resolution workspace_mode WORKSPACE: %w", err)
-			}
-		default:
-			return nil, nil, fmt.Errorf("resolution workspace_mode %d is unsupported", cfg.GetWorkspaceMode())
+		workOn, _, err := resolveWorkspaceMode(dir, cfg.GetWorkspaceMode())
+		if err != nil {
+			return nil, nil, fmt.Errorf("resolution %w", err)
 		}
-		sel := buildSelection{tags: tags, toolchain: cfg.GetToolchain(), moduleMode: cfg.GetModuleMode(), moduleRoot: cfg.GetModuleRoot(), workspaceMode: cfg.GetWorkspaceMode()}
+		effectiveModuleRoot := cfg.GetModuleRoot()
+		if workOn && cfg.GetWorkspaceMode() == stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED && effectiveModuleRoot != "" && isWorkspaceMember(effectiveModuleRoot) {
+			effectiveModuleRoot = ""
+		}
+		sel := buildSelection{tags: tags, toolchain: cfg.GetToolchain(), moduleMode: cfg.GetModuleMode(), moduleRoot: effectiveModuleRoot, workspaceMode: cfg.GetWorkspaceMode()}
 		if sel.moduleRoot != "" || sel.workspaceMode != stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED {
 			base := buildSelection{moduleRoot: sel.moduleRoot, workspaceMode: sel.workspaceMode}
 			if !seen[base.key()] {

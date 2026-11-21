@@ -11,8 +11,38 @@ import (
 
 	"golang.org/x/mod/modfile"
 
+	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
 	"github.com/greatliontech/stipulator/internal/gotool"
 )
+
+// resolveWorkspaceMode determines whether Go workspace mode is active for dir
+// under mode and returns the resolved go.work file path when active.
+func resolveWorkspaceMode(dir string, mode stipulatorv1.GoWorkspaceMode) (bool, string, error) {
+	switch mode {
+	case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED,
+		stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_WORKSPACE:
+	case stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_OFF:
+		return false, "", nil
+	default:
+		return false, "", fmt.Errorf("workspace_mode %d is unsupported", mode)
+	}
+	work := filepath.Join(dir, "go.work")
+	_, err := os.Stat(work)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return false, "", fmt.Errorf("reading go.work: %w", err)
+	}
+	hasWork := err == nil
+	if mode == stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_WORKSPACE && !hasWork {
+		return false, "", fmt.Errorf("workspace_mode WORKSPACE but the tree declares no go.work")
+	}
+	if !hasWork {
+		return false, "", nil
+	}
+	if workAbs, absErr := filepath.Abs(work); absErr == nil {
+		work = workAbs
+	}
+	return true, work, nil
+}
 
 // workspaceMembers returns the tree's Go module directories, relative to
 // dir: the go.work members when a workspace file is present, the root
@@ -100,13 +130,17 @@ func resolvedUnder(root, dir, rel string) error {
 // repository's workspace would otherwise leak into fixture or corpus
 // trees that are not its members and refuse their "./..." patterns.
 func goworkEnv(dir string) ([]string, error) {
-	work := filepath.Join(dir, "go.work")
-	pin := "GOWORK=off"
-	if _, err := os.Stat(work); err == nil {
-		if abs, aerr := filepath.Abs(work); aerr == nil {
-			work = abs
-		}
-		pin = "GOWORK=" + work
+	return goworkModeEnv(dir, stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_UNSPECIFIED)
+}
+
+func goworkModeEnv(dir string, mode stipulatorv1.GoWorkspaceMode) ([]string, error) {
+	workOn, work, err := resolveWorkspaceMode(dir, mode)
+	if err != nil {
+		return nil, err
+	}
+	pin := "off"
+	if workOn {
+		pin = work
 	}
 	// Normalized under gofresh's policy first (a malformed or duplicated
 	// ambient entry refuses here, where the freshness engine this env
@@ -124,7 +158,7 @@ func goworkEnv(dir string) ([]string, error) {
 	// to contradict; this environment backs no reviewed record, so the
 	// pin — not a refusal — is the right shape here.
 	env = gotool.SetEnv(env, "GOPACKAGESDRIVER", "off")
-	env = gotool.SetEnv(env, "GOWORK", strings.TrimPrefix(pin, "GOWORK="))
+	env = gotool.SetEnv(env, "GOWORK", pin)
 	// The toolchain's telemetry is owned at this root as at the policy
 	// normalizer's (telemetry.go).
 	return telemetryOffEnv(env)

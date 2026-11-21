@@ -1,9 +1,7 @@
 package golang
 
 import (
-	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"sort"
 
@@ -19,21 +17,11 @@ func (s buildSelection) directory(root string) string {
 // declarations own their module alone; workspace views retain the declared
 // workspace membership rather than borrowing an enclosing workspace.
 func (s buildSelection) members(root string) ([]string, error) {
-	if s.workspaceMode == stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_OFF {
-		if s.moduleRoot == "" {
-			return []string{"."}, nil
-		}
-		return []string{filepath.FromSlash(s.moduleRoot)}, nil
+	workOn, _, err := resolveWorkspaceMode(root, s.workspaceMode)
+	if err != nil {
+		return nil, fmt.Errorf("resolution %w", err)
 	}
-	_, err := os.Stat(filepath.Join(root, "go.work"))
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("reading resolution workspace: %w", err)
-	}
-	hasWork := err == nil
-	if s.workspaceMode == stipulatorv1.GoWorkspaceMode_GO_WORKSPACE_MODE_WORKSPACE && !hasWork {
-		return nil, fmt.Errorf("resolution workspace_mode WORKSPACE but the tree declares no go.work")
-	}
-	if hasWork {
+	if workOn {
 		return workspaceMembers(root)
 	}
 	if s.moduleRoot == "" {

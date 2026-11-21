@@ -5050,3 +5050,43 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "00139cc5180ff767d8cc1693a09fa74464ea3ef74e19edeebe4e36b5f0c8d5ba"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-resolution-freshness"
+  content_hash: "d61e5a98daee1f079d64153418ee20e2122267eb457b4d0ab47b9e84005313d8"
+  source_hash: "cd76723953b148fc25b9b716cab135c03dae3fee41d92d39a7256b6a4e07af2e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedReusesCheckedCaptureAcrossStaleNonCallableAndTypeToFuncTransition"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8355373a5b01a7a32e1edfabcb4f855fc203e75a4fa579b0eed2b9b767b9dd33"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-resolution-freshness-typed-load"
+  content_hash: "fcd6f7965e75cd573ba08d6b6d6d882cde793a1fbe6bfbd203ce0cea896a3a02"
+  source_hash: "c19ca9f6ef903eaa273c07efb8f548604be35059e0a148eb004d39fd6f89e887"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestServedReusesCheckedCaptureAcrossStaleNonCallableAndTypeToFuncTransition"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "8355373a5b01a7a32e1edfabcb4f855fc203e75a4fa579b0eed2b9b767b9dd33"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-resolution-freshness-typed-load"
+  content_hash: "fcd6f7965e75cd573ba08d6b6d6d882cde793a1fbe6bfbd203ce0cea896a3a02"
+  source_hash: "c19ca9f6ef903eaa273c07efb8f548604be35059e0a148eb004d39fd6f89e887"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestWorkspaceMemberSelectionsDeduplicateAndFilterSecondaryOpeningCaptures"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a66d00236ae97385bf4bbf1f01f724c973948bab9b56538c6918050957b2541b"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "e3cacdc48a4d512369e1d8f9ab1ca6f8b557463f4b5410dc6bec427acb7826b4"
+  source_hash: "8bd7bfed675fea5b98f2cd3b33d2395fdc337cf0cb022fe31949add0b0779295"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestExecuteSelectionAndRunWitnessesBatchFuzzUnderAssumePure"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7cae1dad795f6991b89b62724d9f8c7a4c6b106472c8e6a821cdc515950a8816"
+}

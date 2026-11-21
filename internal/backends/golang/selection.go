@@ -172,7 +172,7 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 					batch = append(batch, name)
 				}
 			}
-			if len(batch) > 0 && len(fuzzes) > 0 {
+			if !n.AssumePure && len(batch) > 0 && len(fuzzes) > 0 {
 				solos = append(solos, fuzzes...)
 			} else {
 				batch = append(batch, fuzzes...)

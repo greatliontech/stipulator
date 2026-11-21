@@ -31,7 +31,7 @@ func prepareSelectedContext(root string, sel buildSelection) (*selectedContext, 
 	if err != nil {
 		return nil, err
 	}
-	base, err := goworkEnv(root)
+	base, err := goworkModeEnv(root, sel.workspaceMode)
 	if err != nil {
 		return nil, err
 	}

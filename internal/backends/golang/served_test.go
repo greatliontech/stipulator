@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -888,5 +891,211 @@ func TestResolverWireMappingsRoundTrip(t *testing.T) {
 	}
 	if _, ok := classFromWire("bogus"); ok {
 		t.Error("unknown class accepted")
+	}
+}
+
+func TestServedReusesCheckedCaptureAcrossStaleNonCallableAndTypeToFuncTransition(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-resolution-freshness", "REQ-evidence-resolution-freshness-typed-load")
+	if testing.Short() {
+		t.Skip("runs cold, stale-reuse, and non-callable-to-callable resolution cycles")
+	}
+	neutralAmbient(t)
+	t.Setenv("HOME", t.TempDir())
+	dir := writeModule(t, map[string]string{
+		"go.mod": "module example.com/noncallreuse\n\ngo 1.26\n",
+		"p/p.go": `package p
+
+type Strategy string
+
+const DefaultStrategy Strategy = "closure"
+
+func Compute(n int) int { return n + 1 }
+func Helper() string    { return string(DefaultStrategy) }
+`,
+		"q/q.go": `package q
+
+type StableConfig struct{ Max int }
+`,
+	})
+	raceCfg := &stipulatorv1.GoInvocationConfig{}
+	raceCfg.SetPackages([]string{"./..."})
+	raceCfg.SetRace(true)
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", raceCfg)})
+	writePolicyRecord(t, dir, pol)
+
+	syms := []string{
+		"example.com/noncallreuse/p.Strategy",
+		"example.com/noncallreuse/p.DefaultStrategy",
+		"example.com/noncallreuse/p.Compute",
+		"example.com/noncallreuse/p.Helper",
+		"example.com/noncallreuse/q.StableConfig",
+		"example.com/noncallreuse/q.StableConfig.Max",
+	}
+
+	resolveAll := func(s *Served) {
+		t.Helper()
+		for _, sym := range syms {
+			res, shape, err := s.Resolve(sym)
+			if err != nil || res != verify.Resolved || shape == "" {
+				t.Fatalf("Resolve(%s) = (%v, %q, %v), want Resolved", sym, res, shape, err)
+			}
+		}
+	}
+
+	cold, err := NewServed(t.Context(), dir, syms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolveAll(cold)
+	if err := cold.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Mutate Compute so p's source certificate moves while q's non-callables stay
+	// valid; p's callables and non-callables become stale in serveSelection and enter
+	// s.unserved alongside the secondary "race" selection.
+	if err := os.WriteFile(filepath.Join(dir, "p", "p.go"), []byte(`package p
+
+type Strategy string
+
+const DefaultStrategy Strategy = "closure"
+
+func Compute(n int) int { return n + 2 }
+func Helper() string    { return string(DefaultStrategy) }
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	stale, err := NewServed(t.Context(), dir, syms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stale.ServedCount() != 2 {
+		t.Fatalf("ServedCount after p edit = %d, want 2 (q's valid non-callables)", stale.ServedCount())
+	}
+
+	// Between NewServed and Resolve (which triggers ensureBackend -> openingCapture),
+	// reuseCheckedCapture on "default" + syntactic default non-callable filtering +
+	// reuseCheckingCertificates must satisfy openingCapture across both "default" and
+	// "race" with zero additional gofresh engine subprocesses.
+	var engineSpawnsDuringOpening atomic.Int32
+	func() {
+		oldEngineHook := engineCommandHook
+		defer func() { engineCommandHook = oldEngineHook }()
+		engineCommandHook = func(*exec.Cmd) { engineSpawnsDuringOpening.Add(1) }
+		resolveAll(stale)
+	}()
+	if got := engineSpawnsDuringOpening.Load(); got != 0 {
+		t.Fatalf("openingCapture spawned %d gofresh engine commands despite fresh checked captures and default non-callable filtering, want 0", got)
+	}
+	if err := stale.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	warm, err := NewServed(t.Context(), dir, syms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer warm.Close()
+	if warm.ServedCount() != len(syms) {
+		t.Fatalf("warm ServedCount = %d, want %d (%v)", warm.ServedCount(), len(syms), warm.Notices())
+	}
+	_ = warm.Close()
+
+	// Whole-selection degradation: mutate p so probeSubjects is non-empty while q's
+	// non-callables still pass certificate validation into validNonCallables, then
+	// fail gofresh's `go list` inside narrowAndCapture (while certificateReader's
+	// `go env` succeeds) so validNonCallables must not leak into s.served.
+	if err := os.WriteFile(filepath.Join(dir, "p", "p.go"), []byte(`package p
+
+type Strategy string
+
+const DefaultStrategy Strategy = "closure"
+
+func Compute(n int) int { return n + 3 }
+func Helper() string    { return string(DefaultStrategy) }
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	missingBin := filepath.Join(t.TempDir(), "missing-go")
+	var degradedServed *Served
+	func() {
+		oldEngineHook := engineCommandHook
+		defer func() { engineCommandHook = oldEngineHook }()
+		engineCommandHook = func(cmd *exec.Cmd) {
+			if slices.Contains(cmd.Args, "list") {
+				cmd.Path = missingBin
+			}
+		}
+		degradedServed, err = NewServed(t.Context(), dir, syms)
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if degradedServed.ServedCount() != 0 || len(degradedServed.Degraded()) != 1 || !strings.HasPrefix(degradedServed.Degraded()[0], `selection "default":`) {
+		t.Fatalf("degraded selection: ServedCount=%d Degraded=%v, want ServedCount=0 and [selection \"default\": ...]",
+			degradedServed.ServedCount(), degradedServed.Degraded())
+	}
+	_ = degradedServed.Close()
+
+	// Refactor Strategy from a non-callable type into a callable function:
+	// serveSelection probes stale non-callables through gofresh, capturing Strategy's
+	// new callable fingerprint so it publishes on the first run.
+	if err := os.WriteFile(filepath.Join(dir, "p", "p.go"), []byte(`package p
+
+func Strategy() string { return "callable" }
+
+const DefaultStrategy = "closure"
+
+func Compute(n int) int { return n + 2 }
+func Helper() string    { return Strategy() + DefaultStrategy }
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	refactored, err := NewServed(t.Context(), dir, syms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resolveAll(refactored)
+	if err := refactored.Close(); err != nil {
+		t.Fatal(err)
+	}
+	warmAfterRefactor, err := NewServed(t.Context(), dir, syms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer warmAfterRefactor.Close()
+	if warmAfterRefactor.ServedCount() != len(syms) {
+		t.Fatalf("warmAfterRefactor ServedCount = %d, want %d (%v)", warmAfterRefactor.ServedCount(), len(syms), warmAfterRefactor.Notices())
+	}
+	_ = warmAfterRefactor.Close()
+
+	// Build-tagged non-callables absent from "default" must remain in `remaining`
+	// across openingCapture so they publish under the secondary "race" selection.
+	if err := os.WriteFile(filepath.Join(dir, "p", "race_only.go"), []byte("//go:build race\n\npackage p\n\ntype RaceOnlyType struct{ Flag bool }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	raceSyms := append(slices.Clone(syms), "example.com/noncallreuse/p.RaceOnlyType", "example.com/noncallreuse/p.RaceOnlyType.Flag")
+	raceCold, err := NewServed(t.Context(), dir, raceSyms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, sym := range raceSyms {
+		res, shape, err := raceCold.Resolve(sym)
+		if err != nil || res != verify.Resolved || shape == "" {
+			t.Fatalf("Resolve(%s) = (%v, %q, %v), want Resolved", sym, res, shape, err)
+		}
+	}
+	if err := raceCold.Close(); err != nil {
+		t.Fatal(err)
+	}
+	raceWarm, err := NewServed(t.Context(), dir, raceSyms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raceWarm.Close()
+	if raceWarm.ServedCount() != len(raceSyms) {
+		t.Fatalf("raceWarm ServedCount = %d, want %d (%v)", raceWarm.ServedCount(), len(raceSyms), raceWarm.Notices())
 	}
 }
