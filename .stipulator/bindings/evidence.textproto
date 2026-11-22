@@ -5190,3 +5190,13 @@ bindings {
   role: BINDING_ROLE_IMPLEMENTS
   shape_hash: "e92e8a260876db2221792b7b6c80a3d4863ea6d343053c19e8f220b9922434ed"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness-diagnosable"
+  content_hash: "beb9e2a7783935ba92132da7cbd9e0c58c96300b1b8526558a3b4224158d74d4"
+  source_hash: "fdacf7cddf5becd47671490381b2f04e193db4347dbb7705ec97ae4d8fe320c1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestGoRunWitnessesScopedExcludesOutOfScopeFromUncacheableReasons"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "607314944936aadc65e9d41425d91aae0899c18fe8c49349c01569384e60d0e4"
+}

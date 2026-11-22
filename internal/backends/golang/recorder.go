@@ -159,6 +159,7 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 	tr := DeriveTestRun(report)
 	published, uncacheableWhy, degraded := r.publish()
 	executedTop := executedTopKeys(report)
+	var fallback uncacheable
 	switch {
 	case degraded != "":
 		// The fault ended publication; what earlier groups installed
@@ -166,89 +167,21 @@ func (r *WitnessRecorder) Derive(ctx context.Context, report *stipulatorv1.Execu
 		// the rest reads uncacheable, so the run tells one story with
 		// the store and its ending.
 		tr.Degraded = degraded
-		installed := map[string]bool{}
-		for _, rec := range published {
-			installed[rec.Package+"."+rec.Test] = true
-		}
-		// A subject the ladder refused before the fault keeps the
-		// ladder's own reason; the degrade explains only the rest.
-		tr.Uncached = 0
-		tr.UncacheableReasons = map[string]string{}
-		for s, why := range uncacheableWhy {
-			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why.String()
-		}
-		for key := range executedTop {
-			if installed[key] {
-				delete(tr.UncacheableReasons, key)
-				continue
-			}
-			tr.Uncached++
-			if _, ok := tr.UncacheableReasons[key]; !ok {
-				tr.UncacheableReasons[key] = reasonDegraded.with(degraded).String()
-			}
-		}
+		fallback = reasonDegraded.with(degraded)
 	case len(r.groups) == 0:
 		// Nothing was capturable (no witness-eligible invocation, no
 		// expected tests, or every eligible package doubly selected):
 		// every executed test is uncacheable — under its recorded
 		// refusal where one stands — and the existing cache is left
 		// alone.
-		tr.Uncached = tr.Ran
-		tr.UncacheableReasons = map[string]string{}
-		for s, why := range uncacheableWhy {
-			tr.UncacheableReasons[s.Package+"."+s.Symbol] = why.String()
-		}
-		for key := range executedTop {
-			if _, ok := tr.UncacheableReasons[key]; !ok {
-				tr.UncacheableReasons[key] = reasonNoCapture.with("no witness-eligible invocation covers the package").String()
-			}
-		}
+		fallback = reasonNoCapture.with("no witness-eligible invocation covers the package")
 	default:
-		// Published is a record count (one per group holding the
-		// subject); Uncached is a subject count in Ran's unit, so
-		// distinct published subjects are the subtrahend — two group
-		// records for one shared package must not mask another
-		// subject's drop.
-		publishedSubjects := map[string]bool{}
-		for _, rec := range published {
-			publishedSubjects[rec.Package+"."+rec.Test] = true
-		}
-		if tr.Ran > len(publishedSubjects) {
-			tr.Uncached = tr.Ran - len(publishedSubjects)
-		}
-		// Per-test attribution mirrors the selective runner's: the
-		// ladder's own refusal reasons plus a structural fallback
-		// (REQ-evidence-witness-freshness-diagnosable's attributable
-		// reason).
-		if tr.Uncached > 0 || len(uncacheableWhy) > 0 {
-			tr.UncacheableReasons = map[string]string{}
-			for s, why := range uncacheableWhy {
-				tr.UncacheableReasons[s.Package+"."+s.Symbol] = why.String()
-			}
-			publishedKey := map[string]bool{}
-			for _, rec := range published {
-				publishedKey[rec.Package+"."+rec.Test] = true
-			}
-			for key := range executedTop {
-				if publishedKey[key] {
-					delete(tr.UncacheableReasons, key)
-					continue
-				}
-				if _, ok := tr.UncacheableReasons[key]; !ok {
-					tr.UncacheableReasons[key] = reasonNotPublished.with("").String()
-				}
-			}
-		}
-		// Publication installed at production: each package's records
-		// landed as their own variant files the moment the package
-		// completed under its covering invocation. Records this
-		// run never touched — a shadowed sibling's, a package this policy
-		// never selected's — need no rewrite: the store is per-record, so
-		// retention is the default and nothing shrinks. A departed test's
-		// variants linger as dead weight — its identity never installs
-		// again, so no bound fires; store growth is cost, never
-		// correctness.
+		fallback = reasonNotPublished.with("")
 	}
+	reconcileUncached(tr, executedTop, published, nil, uncacheableWhy, nil, fallback)
+	// Publication installed at production: each package's records landed as
+	// their own variant files the moment the package completed under its
+	// covering invocation. Records this run never touched need no rewrite.
 	return tr, nil
 }
 

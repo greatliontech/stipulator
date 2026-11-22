@@ -163,7 +163,7 @@ func TestFile(t *testing.T) { _, _ = os.ReadFile("fixture") }
 			}
 			t.Cleanup(func() { afterServedCheckForTest = nil })
 		}
-		drifted, publish, _ := revalidateServed(ctx, wg, subject.Package)
+		drifted, publish := revalidateServed(ctx, wg, subject.Package)
 		if i == 2 {
 			if len(drifted) != 1 || len(publish) != 0 {
 				t.Fatalf("failed close granted pair: drift=%v publish=%d", drifted, len(publish))

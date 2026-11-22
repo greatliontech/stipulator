@@ -1130,10 +1130,13 @@ func TestCheckRaceLegPrecedenceOverPlainAdmission(t *testing.T) {
 			"  role: BINDING_ROLE_TESTS\n" +
 			"}\n",
 	}))
-	for _, full := range []bool{false, true} {
+	for i, full := range []bool{false, true, false} {
 		res, err := Run(context.Background(), dir, full, nil)
 		if err != nil {
 			t.Fatal(err)
+		}
+		if i == 2 && (res.GetTestsServed() != 1 || res.GetTestsExecuted() != 0) {
+			t.Fatalf("warm full=false: served=%d executed=%d, want 1/0", res.GetTestsServed(), res.GetTestsExecuted())
 		}
 		var bound *stipulatorv1.BindingResult
 		for _, r := range res.GetVerify().GetResults() {
@@ -1142,10 +1145,10 @@ func TestCheckRaceLegPrecedenceOverPlainAdmission(t *testing.T) {
 			}
 		}
 		if bound == nil || bound.GetTestOutcome() != stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED {
-			t.Fatalf("full=%v: bound outcome = %+v, want a granted pass", full, bound)
+			t.Fatalf("pass %d (full=%v): bound outcome = %+v, want a granted pass", i, full, bound)
 		}
 		if !bound.GetRaceEnabled() {
-			t.Fatalf("full=%v: race-legged grant downgraded to the plain tier", full)
+			t.Fatalf("pass %d (full=%v): race-legged grant downgraded to the plain tier", i, full)
 		}
 	}
 }

@@ -851,8 +851,8 @@ func TestGroupSessionRetainsWarmSessionAcrossSubsetWaves(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(d.groups) != 1 || d.groups[0].sessionState == nil {
-		t.Fatalf("groups = %+v, want 1 group with initialized sessionState", d.groups)
+	if len(d.groups) != 1 || d.groups[0].sessionState != nil {
+		t.Fatalf("groups = %+v, want 1 group with nil resting sessionState before groupSession", d.groups)
 	}
 	g := d.groups[0]
 	s1, err := groupSession(ctx, dir, g, &pgoObservation{inputs: []string{}})
@@ -873,5 +873,169 @@ func TestGroupSessionRetainsWarmSessionAcrossSubsetWaves(t *testing.T) {
 	}
 	if s3 == s1 {
 		t.Fatal("changed PGO inputs reused stale Session")
+	}
+}
+
+func TestDeriveHelpers(t *testing.T) {
+	if got := plural(0, "subject"); got != "0 subjects" {
+		t.Fatalf("plural(0) = %q", got)
+	}
+	if got := plural(1, "subject"); got != "1 subject" {
+		t.Fatalf("plural(1) = %q", got)
+	}
+	if got := plural(2, "record"); got != "2 records" {
+		t.Fatalf("plural(2) = %q", got)
+	}
+
+	row := func(pkg, test string, out stipulatorv1.TestOutcome, inv string, regs ...string) *stipulatorv1.TestResult {
+		prod := &stipulatorv1.ProducerIdentity{}
+		prod.SetInvocation(inv)
+		r := &stipulatorv1.TestResult{}
+		r.SetPackage(pkg)
+		r.SetTest(test)
+		r.SetOutcome(out)
+		r.SetProducer(prod)
+		r.SetRegistrations(regs)
+		return r
+	}
+	tr := &verify.TestRun{Outcomes: map[string]verify.TestOutcome{}}
+	ranTop := map[string]bool{}
+	raceGranted := map[string]bool{}
+	plainGranted := map[string]bool{}
+	rows := []*stipulatorv1.TestResult{
+		row("p", "TestFlip/sub", stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, "plain", "REQ-a"),
+		row("p", "TestFlip/sub", stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED, "race"),
+		row("p", "TestFlip/sub", stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED, "plain"),
+		row("p", "TestFlip/sub", stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, "race"),
+		row("p", "TestDenied", stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, "denied"),
+		row("p", "TestRaceOnly", stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, "race"),
+		row("p", "ExampleFoo", stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED, "race"),
+	}
+	foldTestRows(tr, rows, ranTop, raceGranted, plainGranted, func(r *stipulatorv1.TestResult) (bool, bool) {
+		switch r.GetProducer().GetInvocation() {
+		case "race":
+			return true, false
+		case "plain":
+			return true, true
+		default:
+			return false, false
+		}
+	})
+	if tr.Outcomes["p.TestFlip/sub"] != verify.TestFailed {
+		t.Fatalf("TestFlip/sub outcome = %v, want TestFailed", tr.Outcomes["p.TestFlip/sub"])
+	}
+	if _, ok := tr.Outcomes["p.TestDenied"]; ok {
+		t.Fatalf("denied pass recorded outcome %v", tr.Outcomes["p.TestDenied"])
+	}
+	if !plainGranted["p.TestFlip/sub"] || !raceGranted["p.TestFlip/sub"] || !raceGranted["p.TestRaceOnly"] || plainGranted["p.TestRaceOnly"] {
+		t.Fatalf("tier grants = (race=%v, plain=%v)", raceGranted, plainGranted)
+	}
+	if !ranTop["p.TestFlip"] || !ranTop["p.TestDenied"] || !ranTop["p.TestRaceOnly"] || ranTop["p.ExampleFoo"] {
+		t.Fatalf("ranTop = %v, want top-level non-example keys only", ranTop)
+	}
+	if len(tr.Registrations) != 1 || tr.Registrations[0].Requirement != "REQ-a" {
+		t.Fatalf("registrations = %+v", tr.Registrations)
+	}
+
+	diag := func(pkg, test, out string) *stipulatorv1.FailureDiagnostic {
+		d := &stipulatorv1.FailureDiagnostic{}
+		d.SetPackage(pkg)
+		d.SetTest(test)
+		d.SetOutput(out)
+		return d
+	}
+	foldTestDiagnostics(tr, []*stipulatorv1.FailureDiagnostic{
+		diag("p", "", "pkg build failed"),
+		diag("p", "TestFlip", "first line"),
+		diag("p", "TestFlip", "second line"),
+	})
+	if len(tr.Failures) != 1 || tr.Failures["p.TestFlip"] != "first line\nsecond line" {
+		t.Fatalf("failures = %+v", tr.Failures)
+	}
+
+	// All executed subjects published/served and no side reasons -> nil UncacheableReasons.
+	clean := &verify.TestRun{}
+	reconcileUncached(
+		clean,
+		map[string]bool{"p.TestPub": true, "p.TestServed": true},
+		[]witnesscache.Record{{Package: "p", Test: "TestPub"}},
+		map[string]bool{"p.TestServed": true},
+		nil,
+		nil,
+		reasonNotPublished.with(""),
+	)
+	if clean.Uncached != 0 || clean.UncacheableReasons != nil {
+		t.Fatalf("clean reconcile = (%d, %v), want (0, nil)", clean.Uncached, clean.UncacheableReasons)
+	}
+
+	// Shared subject whose candidate uncacheableWhy entry is cleared by a
+	// publishing/serving sibling leaves UncacheableReasons nil rather than empty.
+	cleared := &verify.TestRun{}
+	reconcileUncached(
+		cleared,
+		map[string]bool{"p.TestShared": true},
+		[]witnesscache.Record{{Package: "p", Test: "TestShared"}},
+		nil,
+		map[gofresh.Subject]uncacheable{{Package: "p", Symbol: "TestShared"}: reasonProducerUnhealthy},
+		nil,
+		reasonNotPublished.with(""),
+	)
+	if cleared.Uncached != 0 || cleared.UncacheableReasons != nil {
+		t.Fatalf("cleared reconcile = (%d, %v), want (0, nil)", cleared.Uncached, cleared.UncacheableReasons)
+	}
+
+	// Zero uncached with ambiguous subject still attributes reasonNoProducingLeg.
+	ambigOnly := &verify.TestRun{}
+	reconcileUncached(
+		ambigOnly,
+		map[string]bool{"p.TestPub": true},
+		[]witnesscache.Record{{Package: "p", Test: "TestPub"}},
+		nil,
+		nil,
+		map[gofresh.Subject]bool{{Package: "p", Symbol: "TestAmbig"}: true},
+		reasonNotPublished.with(""),
+	)
+	if ambigOnly.Uncached != 0 || ambigOnly.UncacheableReasons["p.TestAmbig"] != reasonNoProducingLeg.String() {
+		t.Fatalf("ambigOnly = (%d, %v)", ambigOnly.Uncached, ambigOnly.UncacheableReasons)
+	}
+
+	// Precedence: explicit uncacheableWhy > ambiguousSubjects > fallback, while
+	// published/served subjects are excluded even when present in uncacheableWhy.
+	mixed := &verify.TestRun{}
+	reconcileUncached(
+		mixed,
+		map[string]bool{
+			"p.TestPub":      true,
+			"p.TestServed":   true,
+			"p.TestWhy":      true,
+			"p.TestAmbig":    true,
+			"p.TestFallback": true,
+		},
+		[]witnesscache.Record{{Package: "p", Test: "TestPub"}},
+		map[string]bool{"p.TestServed": true},
+		map[gofresh.Subject]uncacheable{
+			{Package: "p", Symbol: "TestWhy"}:    reasonProducerUnhealthy,
+			{Package: "p", Symbol: "TestPub"}:    reasonProducerUnhealthy,
+			{Package: "p", Symbol: "TestServed"}: reasonProducerUnhealthy,
+		},
+		map[gofresh.Subject]bool{
+			{Package: "p", Symbol: "TestWhy"}:   true,
+			{Package: "p", Symbol: "TestAmbig"}: true,
+		},
+		reasonDegraded.with("fault"),
+	)
+	if mixed.Uncached != 3 {
+		t.Fatalf("mixed.Uncached = %d, want 3", mixed.Uncached)
+	}
+	if _, ok := mixed.UncacheableReasons["p.TestPub"]; ok {
+		t.Fatalf("published subject remained in UncacheableReasons: %v", mixed.UncacheableReasons)
+	}
+	if _, ok := mixed.UncacheableReasons["p.TestServed"]; ok {
+		t.Fatalf("served subject remained in UncacheableReasons: %v", mixed.UncacheableReasons)
+	}
+	if mixed.UncacheableReasons["p.TestWhy"] != reasonProducerUnhealthy.String() ||
+		mixed.UncacheableReasons["p.TestAmbig"] != reasonNoProducingLeg.String() ||
+		mixed.UncacheableReasons["p.TestFallback"] != reasonDegraded.with("fault").String() {
+		t.Fatalf("mixed.UncacheableReasons = %v", mixed.UncacheableReasons)
 	}
 }

@@ -196,7 +196,7 @@ func TestSelectiveMovementRefusesEveryAttemptSibling(t *testing.T) {
 			unit.solos = []packageRun{solo.run}
 			merge := newExecMerge()
 			merge.addUnit("inv", unit)
-			records, reasons, _, err := publishExecuted(t.Context(), wg, unit.pkg, merge)
+			records, reasons, err := publishExecuted(t.Context(), wg, unit.pkg, merge)
 			if err != nil || len(records) != 0 || len(reasons) != 2 {
 				t.Fatalf("selective publication: %v %v %v", records, reasons, err)
 			}

@@ -273,6 +273,9 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 	if scoped.GetTestsExecuted() != 1 {
 		t.Fatalf("executed=%d, want exactly the in-scope stale witness", scoped.GetTestsExecuted())
 	}
+	if scoped.GetTestsUncacheable() != 0 || len(scoped.GetUncacheableReasons()) != 0 {
+		t.Fatalf("scoped uncacheable = (%d, %v), want (0, empty)", scoped.GetTestsUncacheable(), scoped.GetUncacheableReasons())
+	}
 	if scoped.GetTestsServed() < 1 {
 		t.Fatalf("served=%d, want the fresh out-of-scope witness served", scoped.GetTestsServed())
 	}
@@ -305,6 +308,9 @@ func TestCheckScopedIdsExecutesOnlyInScopeStale(t *testing.T) {
 	}
 	if scoped.GetTestsExecuted() != 1 {
 		t.Fatalf("executed=%d, want exactly the in-scope stale witness", scoped.GetTestsExecuted())
+	}
+	if scoped.GetTestsUncacheable() != 0 || len(scoped.GetUncacheableReasons()) != 0 {
+		t.Fatalf("scoped uncacheable = (%d, %v), want (0, empty)", scoped.GetTestsUncacheable(), scoped.GetUncacheableReasons())
 	}
 	rowA, rowB = rows(scoped)
 	if rowA.GetBucket() != stipulatorv1.Bucket_BUCKET_COVERED || rowA.GetScopeBlocked() {

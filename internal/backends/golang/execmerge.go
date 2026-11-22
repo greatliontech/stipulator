@@ -158,10 +158,11 @@ func executeSelections(ctx context.Context, invocations []*NormalizedInvocation,
 }
 
 // finishGroup finishes the group's packages in the verification pass,
-// after every execution of the run has completed: every package not yet
-// published publishes (the arm for packages nothing executed — their
-// subjects' reasons), and every package with served records revalidates
-// them (REQ-check-witness-selection's post-run revalidation), its drifted
+// after every execution of the run has completed: every in-scope stale
+// package not yet published publishes (the arm for packages an envelope
+// cutoff prevented from completing — their subjects' reasons), and every
+// package with served records revalidates them
+// (REQ-check-witness-selection's post-run revalidation), its drifted
 // subjects returned for the run's one retry.
 func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
 	var drifted []gofresh.Subject
@@ -169,7 +170,7 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 	reasons := map[gofresh.Subject]uncacheable{}
 	for _, pkg := range wg.packages() {
 		leg := wg.legs[pkg]
-		if !leg.published {
+		if !leg.published && len(wg.stale[pkg]) > 0 {
 			r, why, err := publishPackage(ctx, wg, pkg, m)
 			if err != nil {
 				return nil, nil, nil, err
@@ -177,13 +178,12 @@ func finishGroup(ctx context.Context, wg *witnessGroup, m *execMerge) ([]gofresh
 			records = append(records, r...)
 			maps.Copy(reasons, why)
 		}
-		d, r, why := revalidateServed(ctx, wg, pkg)
+		d, r := revalidateServed(ctx, wg, pkg)
 		if ctx.Err() != nil {
 			return nil, nil, nil, ctx.Err()
 		}
 		drifted = append(drifted, d...)
 		records = append(records, r...)
-		maps.Copy(reasons, why)
 	}
 	return drifted, records, reasons, nil
 }
@@ -209,7 +209,7 @@ var afterServedCheckForTest func(pkg string)
 func publishPackage(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
 	pubStart := time.Now()
 	wg.legs[pkg].published = true
-	records, reasons, _, err := publishExecuted(ctx, wg, pkg, m)
+	records, reasons, err := publishExecuted(ctx, wg, pkg, m)
 	trace.Emit(ctx, trace.DomainWitness, "publish_package", pkg,
 		trace.Int("records", len(records)),
 		trace.Int("uncacheable", len(reasons)),
@@ -246,14 +246,13 @@ func (wg *witnessGroup) release(pkg string) {
 // discards every serve of the package the same way; a carve-out-served
 // record that survived installs refreshed. The package's sibling is
 // released after. A cancellation surfaces through ctx.
-func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofresh.Subject, []witnesscache.Record, map[gofresh.Subject]uncacheable) {
+func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofresh.Subject, []witnesscache.Record) {
 	revStart := time.Now()
 	leg := wg.legs[pkg]
 	defer wg.release(pkg)
 	served := wg.servedIn(pkg)
-	reasons := map[gofresh.Subject]uncacheable{}
 	if len(served) == 0 {
-		return nil, nil, reasons
+		return nil, nil
 	}
 	var driftedCount, recordCount int
 	defer func() {
@@ -288,7 +287,7 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 	}
 	if err != nil {
 		if ctx.Err() != nil {
-			return nil, nil, reasons
+			return nil, nil
 		}
 		// The discarded serves re-execute holding prior evidence, so each
 		// names why serving refused it — the same attribution the
@@ -297,7 +296,7 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 			wg.executedWhy[s] = executedRevalidationFault.with(err.Error())
 		}
 		driftedCount = len(served)
-		return served, nil, reasons
+		return served, nil
 	}
 	var drifted []gofresh.Subject
 	var records []witnesscache.Record
@@ -333,7 +332,7 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 			records = append(records, rec)
 		}
 	}
-	return drifted, records, reasons
+	return drifted, records
 }
 
 // publishExecuted selects independently eligible native-finalized attempts.
@@ -342,7 +341,7 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 // The error return is reserved for caller cancellation. The second
 // return names, per unpublished subject, the leg that refused
 // (REQ-evidence-witness-freshness-diagnosable's diagnosable-set requirement).
-func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, bool, error) {
+func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execMerge) ([]witnesscache.Record, map[gofresh.Subject]uncacheable, error) {
 	order := make([]gofresh.Subject, 0, len(wg.stale[pkg]))
 	for _, name := range wg.stale[pkg] {
 		order = append(order, gofresh.Subject{Package: pkg, Symbol: name})
@@ -364,9 +363,9 @@ func publishExecuted(ctx context.Context, wg *witnessGroup, pkg string, m *execM
 	leg := wg.legs[pkg]
 	records, _, fatal := publishEligible(ctx, wg.g.id, leg, order, eligible, declarationsFor(wg.g), reasons)
 	if fatal != nil {
-		return nil, nil, false, fatal
+		return nil, nil, fatal
 	}
-	return records, reasons, false, nil
+	return records, reasons, nil
 }
 
 // retryDrifted re-executes each drifted served subject exactly once,
@@ -474,7 +473,7 @@ func retryDrifted(ctx context.Context, pc *Capture, groups []*witnessGroup, drif
 			// final consumption, rather than retaining completed source graphs.
 			defer leg.release()
 			rwg := &witnessGroup{g: st.wg.g, view: st.view, legs: st.legs, stale: map[string][]string{unit.pkg: names}, executedWhy: map[gofresh.Subject]executedReason{}}
-			records, retryReasons, _, err := publishExecuted(ctx, rwg, unit.pkg, m)
+			records, retryReasons, err := publishExecuted(ctx, rwg, unit.pkg, m)
 			maps.Copy(reasons, retryReasons)
 			if err != nil {
 				return err
@@ -558,54 +557,13 @@ func consumeMergeFailuresOnly(tr *verify.TestRun, m *execMerge, ranTop map[strin
 // by a green sibling.
 func consumeMerge(tr *verify.TestRun, m *execMerge, ranTop map[string]bool, plainInv, raceGranted, plainGranted map[string]bool) {
 	tr.Diagnostics = append(tr.Diagnostics, m.diags...)
-	for _, row := range m.rows {
+	foldTestRows(tr, m.rows, ranTop, raceGranted, plainGranted, func(row *stipulatorv1.TestResult) (bool, bool) {
 		pkg, test := row.GetPackage(), row.GetTest()
-		key := pkg + "." + test
-		outcome := verify.TestNotRun
-		switch row.GetOutcome() {
-		case stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED:
-			outcome = verify.TestFailed
-		case stipulatorv1.TestOutcome_TEST_OUTCOME_SKIPPED:
-			outcome = verify.TestSkipped
-		case stipulatorv1.TestOutcome_TEST_OUTCOME_PASSED:
-			_, denied := m.denied[producerSubject{producer: keyOfProducer(row.GetProducer()), subject: gofresh.Subject{Package: pkg, Symbol: topLevel(test)}}]
-			if !denied && m.disp[keyOfProducer(row.GetProducer())] == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
-				outcome = verify.TestPassed
-				if plainInv[row.GetProducer().GetInvocation()] {
-					plainGranted[key] = true
-				} else {
-					raceGranted[key] = true
-				}
-			}
+		_, denied := m.denied[producerSubject{producer: keyOfProducer(row.GetProducer()), subject: gofresh.Subject{Package: pkg, Symbol: topLevel(test)}}]
+		if denied || m.disp[keyOfProducer(row.GetProducer())] != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+			return false, false
 		}
-		if outcome != verify.TestNotRun && verify.OutcomeRank(outcome) > verify.OutcomeRank(tr.Outcomes[key]) {
-			tr.Outcomes[key] = outcome
-		}
-		for _, req := range row.GetRegistrations() {
-			tr.Registrations = append(tr.Registrations, verify.Registration{
-				Package: pkg, Test: test, Requirement: req,
-			})
-		}
-		if key, ok := executedTopKey(pkg, test); ok {
-			ranTop[key] = true
-		}
-	}
-	for _, d := range m.diags {
-		if d.GetTest() == "" {
-			// A diagnostic no single test owns — an envelope cutoff, a
-			// package abort, a build failure — is the visibility story of
-			// the subjects it denied: it rides the result as its typed
-			// row alone (one fact, one home).
-			continue
-		}
-		if tr.Failures == nil {
-			tr.Failures = map[string]string{}
-		}
-		key := d.GetPackage() + "." + d.GetTest()
-		if prev, ok := tr.Failures[key]; ok {
-			tr.Failures[key] = prev + "\n" + d.GetOutput()
-		} else {
-			tr.Failures[key] = d.GetOutput()
-		}
-	}
+		return true, plainInv[row.GetProducer().GetInvocation()]
+	})
+	foldTestDiagnostics(tr, m.diags)
 }

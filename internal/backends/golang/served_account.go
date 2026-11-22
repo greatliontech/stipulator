@@ -205,7 +205,7 @@ func (s *Served) publishNotices() []string {
 	var out []string
 	for _, key := range keys {
 		a := s.published[key]
-		line := fmt.Sprintf("resolution published under %q: %s", selectionWord(key), countWord(a.installed, "record"))
+		line := fmt.Sprintf("resolution published under %q: %s", selectionWord(key), plural(a.installed, "record"))
 		var skipped []string
 		if len(a.moved) > 0 {
 			skipped = append(skipped, namedClass(a.moved, "moved between the opening and closing capture"))
@@ -225,14 +225,6 @@ func (s *Served) publishNotices() []string {
 		out = append(out, line)
 	}
 	return out
-}
-
-// countWord renders a count with its noun, pluralized.
-func countWord(n int, noun string) string {
-	if n == 1 {
-		return "1 " + noun
-	}
-	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // selectionWord spells a selection key for a person: the default

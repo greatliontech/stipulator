@@ -178,8 +178,8 @@ func TestResolutionMultiViewIsolatesPackageFailures(t *testing.T) {
 	// Cross-view isolation when the broken package is the sole package queried in
 	// a secondary view while good's package is absent in that view.
 	tagDir := writeModule(t, map[string]string{
-		"go.mod":          "module example.com/tagiso\n\ngo 1.27\n",
-		"good/good.go":    "//go:build !dst\n\npackage good\nfunc F() {}\n",
+		"go.mod":           "module example.com/tagiso\n\ngo 1.27\n",
+		"good/good.go":     "//go:build !dst\n\npackage good\nfunc F() {}\n",
 		"dstbad/dstbad.go": "//go:build dst\n\npackage dstbad\nfunc B() {}\n",
 	})
 	dstPolicy(t, tagDir)

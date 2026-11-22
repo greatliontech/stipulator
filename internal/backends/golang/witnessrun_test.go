@@ -2495,6 +2495,103 @@ func TestOther(t *testing.T) {}
 	}
 }
 
+func TestGoRunWitnessesScopedExcludesOutOfScopeFromUncacheableReasons(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-freshness-diagnosable")
+	neutralAmbient(t)
+	if testing.Short() {
+		t.Skip("executes go test over a fixture module")
+	}
+	tmp := writeModule(t, map[string]string{
+		"go.mod": "module example.com/scopeskip\n\ngo 1.26\n",
+		"shared/shared_test.go": `package shared
+
+import "testing"
+
+func TestIn(t *testing.T)  {}
+func TestOut(t *testing.T) {}
+`,
+		"outside/outside_test.go": `package outside
+
+import "testing"
+
+func TestNeverSelected(t *testing.T) {}
+`,
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	writePolicyRecord(t, tmp, p)
+
+	ctx := context.Background()
+	scope := map[gofresh.Subject]bool{{Package: "example.com/scopeskip/shared", Symbol: "TestIn"}: true}
+	tr, err := RunWitnessesScoped(ctx, mustCapture(t, ctx, tmp, p), scope, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.Ran != 1 || tr.Uncached != 0 || tr.UncacheableReasons != nil {
+		t.Fatalf("scoped run = (ran=%d, uncached=%d, reasons=%v), want (1, 0, nil)", tr.Ran, tr.Uncached, tr.UncacheableReasons)
+	}
+	if !tr.ScopeSkipped["example.com/scopeskip/shared.TestOut"] || !tr.ScopeSkipped["example.com/scopeskip/outside.TestNeverSelected"] {
+		t.Fatalf("ScopeSkipped = %v, want both out-of-scope subjects marked", tr.ScopeSkipped)
+	}
+}
+
+func TestGoRunWitnessesServedTierAttribution(t *testing.T) {
+	stipulate.Covers(t, "REQ-check-witness-selection")
+	neutralAmbient(t)
+	if testing.Short() {
+		t.Skip("executes go test over a fixture module")
+	}
+	tmp := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/tierset\n\ngo 1.26\n",
+		"p/off.go":    "//go:build !skiprace\n\npackage p\n\nconst skipInRace = false\n",
+		"p/on.go":     "//go:build skiprace\n\npackage p\n\nconst skipInRace = true\n",
+		"p/p_test.go": "package p\n\nimport \"testing\"\n\nfunc TestBoth(t *testing.T) {}\n\nfunc TestSkipRacePassPlain(t *testing.T) {\n\tif skipInRace {\n\t\tt.Skip(\"skipped in race leg\")\n\t}\n}\n",
+	})
+	plainCfg := &stipulatorv1.GoInvocationConfig{}
+	plainCfg.SetPackages([]string{"./..."})
+	plainCfg.SetPlainWitness(true)
+	raceCfg := &stipulatorv1.GoInvocationConfig{}
+	raceCfg.SetPackages([]string{"./..."})
+	raceCfg.SetRace(true)
+	raceCfg.SetTags([]string{"skiprace"})
+	p := &stipulatorv1.TestPolicy{}
+	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("plain", plainCfg), goInvocation("race", raceCfg)})
+	writePolicyRecord(t, tmp, p)
+
+	ctx := context.Background()
+	cold, err := RunWitnesses(ctx, tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cold.Ran != 2 || cold.Uncached != 0 {
+		t.Fatalf("cold = (ran=%d, uncached=%d, reasons=%v), want (2, 0)", cold.Ran, cold.Uncached, cold.UncacheableReasons)
+	}
+	if cold.PlainWitness["example.com/tierset/p.TestBoth"] || !cold.PlainWitness["example.com/tierset/p.TestSkipRacePassPlain"] {
+		t.Fatalf("cold PlainWitness = %v, want TestSkipRacePassPlain alone", cold.PlainWitness)
+	}
+
+	warm, err := RunWitnesses(ctx, tmp, noSeeding{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if warm.Fresh != 2 || warm.Ran != 0 || warm.Uncached != 0 {
+		t.Fatalf("warm = (fresh=%d, ran=%d, uncached=%d), want (2, 0, 0)", warm.Fresh, warm.Ran, warm.Uncached)
+	}
+	if warm.Outcomes["example.com/tierset/p.TestBoth"] != verify.TestPassed ||
+		warm.Outcomes["example.com/tierset/p.TestSkipRacePassPlain"] != verify.TestPassed {
+		t.Fatalf("warm Outcomes = %v, want both TestPassed", warm.Outcomes)
+	}
+	if warm.PlainWitness["example.com/tierset/p.TestBoth"] {
+		t.Fatalf("warm TestBoth downgraded to plain tier despite race-group serve: %v", warm.PlainWitness)
+	}
+	if !warm.PlainWitness["example.com/tierset/p.TestSkipRacePassPlain"] {
+		t.Fatalf("warm TestSkipRacePassPlain laundered into race tier by skipped race record: %v", warm.PlainWitness)
+	}
+}
+
 // A package two producer environments select holds one record per capture
 // group: each group publishes and serves its own leg under its own record
 // identity, warm runs serve both legs, and a source edit re-executes both —
