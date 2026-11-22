@@ -87,8 +87,23 @@ func New(t *testing.T, resolution bool) Store {
 		}
 	}
 	if resolution {
+		sourceFP := gofresh.Fingerprint{
+			MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32),
+			ClosureStrategy:  gofresh.ClosureStrategy,
+			ToolchainContent: "content", AdmissionPolicy: "admission",
+			Guards:     gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)},
+			ResultKind: gofresh.SourceResult,
+		}
 		for i, name := range []string{"KeepA", "KeepB", "Delete", "Unexamined"} {
-			rec := resolutioncache.Record{Selection: "default", Symbol: pkg + "." + name, Fingerprint: resolutioncache.SourceTiers(fp), Certificate: resolutioncache.Certificate{Derivation: resolutioncache.Derivation, Inputs: strings.Repeat("e", 64)}, Resolution: "resolved", Shape: "shape", Package: pkg, WitnessClass: "example"}
+			rec := resolutioncache.Record{
+				Selection:    "default",
+				Symbol:       pkg + "." + name,
+				Views:        []resolutioncache.ViewEntry{{Selection: "default", Present: true, Fingerprint: sourceFP}},
+				Resolution:   "resolved",
+				Shape:        "shape",
+				Package:      pkg,
+				WitnessClass: "example",
+			}
 			if err := resolutioncache.InstallAll(f.Root, []resolutioncache.Record{rec}); err != nil {
 				t.Fatal(err)
 			}

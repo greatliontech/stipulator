@@ -82,7 +82,7 @@ func TestResolutionWorkspaceModeKeepsItsDependencyGraph(t *testing.T) {
 			t.Fatal(err)
 		}
 		subject := gofresh.Subject{Package: "example.com/main", Symbol: "Read"}
-		view, err := engine.Snapshot(t.Context(), []gofresh.Subject{subject}, gofresh.CodeResult)
+		view, err := engine.Snapshot(t.Context(), []gofresh.Subject{subject}, gofresh.SourceResult)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -257,8 +257,9 @@ func TestWorkspaceMemberSelectionsDeduplicateAndFilterSecondaryOpeningCaptures(t
 		t.Fatalf("policyBuildSelections = %q, want %q", gotKeys, wantKeys)
 	}
 
-	// Untagged workspace callables and non-callables resolve in "default"; openingCapture
-	// must capture only "default" with gofresh, skipping gofresh Session/Snapshot loads on secondary views.
+	// Untagged workspace callables and non-callables resolve in "default" and
+	// capture multi-view SourceResult entries across workspace selections while
+	// independent module views ("indep") skip gofresh subject loads completely.
 	untaggedSyms := []string{
 		"example.com/root.RootConfig",
 		"example.com/root.RootConfig.Limit",
@@ -271,14 +272,13 @@ func TestWorkspaceMemberSelectionsDeduplicateAndFilterSecondaryOpeningCaptures(t
 	if err != nil {
 		t.Fatal(err)
 	}
-	var raceEngineLoads atomic.Int32
+	var indepEngineLoads atomic.Int32
 	func() {
 		oldEngineHook := engineCommandHook
 		defer func() { engineCommandHook = oldEngineHook }()
 		engineCommandHook = func(cmd *exec.Cmd) {
-			if slices.Contains(cmd.Args, "-tags=race") &&
-				slices.ContainsFunc(cmd.Args, func(arg string) bool { return strings.Contains(arg, "example.com/root") }) {
-				raceEngineLoads.Add(1)
+			if strings.HasSuffix(filepath.ToSlash(cmd.Dir), "/indep") && slices.Contains(cmd.Args, "list") {
+				indepEngineLoads.Add(1)
 			}
 		}
 		for _, sym := range untaggedSyms {
@@ -288,9 +288,18 @@ func TestWorkspaceMemberSelectionsDeduplicateAndFilterSecondaryOpeningCaptures(t
 			}
 		}
 	}()
-	if got := raceEngineLoads.Load(); got != 0 || len(s.opening["default"]) != 3 || len(s.openingUnknown["default"]) != 3 || len(s.opening["race\x00\x00\x00\x00"]) != 0 || len(s.openingUnknown["race\x00\x00\x00\x00"]) != 0 {
-		t.Fatalf("openingCapture raceEngineLoads=%d default=(%d,%d) race=(%d,%d), want 0/(3,3)/(0,0)",
-			got, len(s.opening["default"]), len(s.openingUnknown["default"]), len(s.opening["race\x00\x00\x00\x00"]), len(s.openingUnknown["race\x00\x00\x00\x00"]))
+	if got := indepEngineLoads.Load(); got != 0 ||
+		len(s.openingViews["default"].present) != len(untaggedSyms) ||
+		len(s.openingViews["race\x00\x00\x00\x00"].present) != len(untaggedSyms) ||
+		len(s.openingViews["\x00\x00\x00indep\x00off"].present) != 0 ||
+		len(s.openingViews["\x00\x00\x00indep\x00off"].absent) != len(untaggedSyms) {
+		t.Fatalf("openingCapture indepEngineLoads=%d default=%d race=%d indep=(%d,%d), want 0/%d/%d/(0,%d)",
+			got,
+			len(s.openingViews["default"].present),
+			len(s.openingViews["race\x00\x00\x00\x00"].present),
+			len(s.openingViews["\x00\x00\x00indep\x00off"].present),
+			len(s.openingViews["\x00\x00\x00indep\x00off"].absent),
+			len(untaggedSyms), len(untaggedSyms), len(untaggedSyms))
 	}
 	if err := s.Close(); err != nil {
 		t.Fatal(err)

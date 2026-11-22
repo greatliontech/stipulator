@@ -18,8 +18,8 @@ func TestResolutionRecordsRequireTheWholeEnvelope(t *testing.T) {
 		t.Run(fmt.Sprintf("%q", suffix), func(t *testing.T) {
 			t.Setenv("XDG_CACHE_HOME", t.TempDir())
 			dir := t.TempDir()
-			good := Record{Selection: "default", Symbol: "example.com/p.Good", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
-			candidate := good
+			good := Record{Selection: "default", Symbol: "example.com/p.Good", Views: views("default", "a"), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
+			candidate := good.Clone()
 			candidate.Symbol = "example.com/p.Candidate"
 			if err := InstallAll(dir, []Record{good, candidate}); err != nil {
 				t.Fatal(err)
@@ -50,7 +50,7 @@ func TestResolutionRecordsRequireTheWholeEnvelope(t *testing.T) {
 			for _, rec := range loaded {
 				seen[rec.Symbol] = rec
 			}
-			if seen[good.Symbol] != good || valid && seen[candidate.Symbol] != candidate {
+			if !seen[good.Symbol].Equal(good) || valid && !seen[candidate.Symbol].Equal(candidate) {
 				t.Fatalf("record fields or independent sibling changed: %+v", loaded)
 			}
 			if after, err := os.ReadFile(path); err != nil || !bytes.Equal(after, data) {
@@ -85,44 +85,57 @@ func FuzzResolutionEnvelopeSuffix(f *testing.F) {
 	}
 	f.Fuzz(func(t *testing.T, suffix []byte) {
 		stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
-		rec := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
-		data, err := json.Marshal(entry{Version: version, Selection: rec.Selection, Symbol: rec.Symbol, Fingerprint: rec.Fingerprint, Certificate: rec.Certificate, Resolution: rec.Resolution, Shape: rec.Shape, Package: rec.Package, WitnessClass: rec.WitnessClass})
+		rec := Record{Selection: "default", Symbol: "example.com/p.F", Views: views("default", "a"), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
+		data, err := json.Marshal(entry{Version: version, Selection: rec.Selection, Symbol: rec.Symbol, Views: rec.Views, Resolution: rec.Resolution, Shape: rec.Shape, Package: rec.Package, WitnessClass: rec.WitnessClass})
 		if err != nil {
 			t.Fatal(err)
 		}
 		got, ok := decodeRecord(mustName(t, rec), append(data, suffix...))
 		want := len(bytes.Trim(suffix, " \t\r\n")) == 0
-		if ok != want || ok && got != rec {
+		if ok != want || ok && !got.Equal(rec) {
 			t.Fatalf("suffix %q: admitted=%t want=%t, record=%+v", suffix, ok, want, got)
 		}
 	})
 }
 
-func TestResolutionCertificateRejectsUnsupportedMembers(t *testing.T) {
+func TestResolutionViewEntryRejectsUnsupportedMembers(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
-	good, err := json.Marshal(certificate())
+	presentEntry := ViewEntry{Selection: "default", Present: true, Fingerprint: fingerprint("a")}
+	presentRaw, err := json.Marshal(presentEntry)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var decoded Certificate
-	if err := json.Unmarshal(good, &decoded); err != nil || decoded != certificate() {
-		t.Fatalf("valid certificate: %+v %v", decoded, err)
+	var decoded ViewEntry
+	if err := json.Unmarshal(presentRaw, &decoded); err != nil || decoded != presentEntry {
+		t.Fatalf("valid present view entry: %+v %v", decoded, err)
+	}
+	absentEntry := ViewEntry{Selection: "race", Present: false}
+	absentRaw, err := json.Marshal(absentEntry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(absentRaw, &decoded); err != nil || decoded != absentEntry {
+		t.Fatalf("valid absent view entry: %+v %v", decoded, err)
 	}
 	for name, raw := range map[string]string{
-		"absent fields":  `{}`,
-		"null":           `null`,
-		"future rule":    strings.Replace(string(good), Derivation, "future", 1),
-		"invalid digest": strings.Replace(string(good), certificate().Inputs, strings.Repeat("z", 64), 1),
-		"short digest":   strings.Replace(string(good), certificate().Inputs, "a", 1),
-		"unknown":        strings.TrimSuffix(string(good), "}") + `,"extra":0}`,
-		"duplicate":      strings.TrimSuffix(string(good), "}") + `,"derivation":"` + Derivation + `"}`,
-		"case alias":     strings.Replace(string(good), `"inputs"`, `"Inputs"`, 1),
-		"null inputs":    strings.Replace(string(good), `"`+certificate().Inputs+`"`, `null`, 1),
+		"absent fields":         `{}`,
+		"null":                  `null`,
+		"missing present":       `{"selection":"default"}`,
+		"null present":          `{"selection":"default","present":null}`,
+		"empty selection":       `{"selection":"","present":false}`,
+		"present without fp":    `{"selection":"default","present":true}`,
+		"absent with fp":        strings.Replace(string(presentRaw), `"present":true`, `"present":false`, 1),
+		"unknown field":         strings.TrimSuffix(string(presentRaw), "}") + `,"extra":0}`,
+		"duplicate field":       strings.TrimSuffix(string(absentRaw), "}") + `,"present":false}`,
+		"case alias":            strings.Replace(string(absentRaw), `"present"`, `"Present"`, 1),
+		"null fingerprint":      `{"selection":"default","present":true,"fingerprint":null}`,
+		"code-result fp":        strings.Replace(string(presentRaw), `"resultKind":3`, `"resultKind":1`, 1),
+		"invalid closure bytes": strings.Replace(string(presentRaw), strings.Repeat("a", 32), strings.Repeat("z", 32), 1),
 	} {
 		t.Run(name, func(t *testing.T) {
-			var got Certificate
+			var got ViewEntry
 			if err := json.Unmarshal([]byte(raw), &got); err == nil {
-				t.Fatalf("unsupported certificate admitted: %s", raw)
+				t.Fatalf("unsupported view entry admitted: %s", raw)
 			}
 		})
 	}
@@ -132,7 +145,7 @@ func TestResolutionEnvelopeRejectsAmbiguousAnswers(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	rec := Record{Selection: "default", Symbol: "example.com/p.F", Fingerprint: fingerprint("a"), Certificate: certificate(), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
+	rec := Record{Selection: "default", Symbol: "example.com/p.F", Views: views("default", "a"), Resolution: "resolved", Shape: "shape", Package: "example.com/p", WitnessClass: "example"}
 	if err := InstallAll(dir, []Record{rec}); err != nil {
 		t.Fatal(err)
 	}
@@ -142,13 +155,15 @@ func TestResolutionEnvelopeRejectsAmbiguousAnswers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, ok := decodeRecord(name, data); !ok || got != rec {
+	if got, ok := decodeRecord(name, data); !ok || !got.Equal(rec) {
 		t.Fatalf("valid answer refused: %+v %t", got, ok)
 	}
 	for label, raw := range map[string]string{
 		"duplicate verdict": strings.TrimSuffix(string(data), "}") + `,"resolution":"resolved"}`,
 		"case alias":        strings.Replace(string(data), `"resolution"`, `"Resolution"`, 1),
 		"null reason":       strings.TrimSuffix(string(data), "}") + `,"neverServe":null}`,
+		"null views":        strings.Replace(string(data), `"views": [`, `"views": null, "extra": [`, 1),
+		"null view element": strings.Replace(string(data), `"views": [`, `"views": [null,`, 1),
 		"unknown field":     strings.TrimSuffix(string(data), "}") + `,"extra":0}`,
 		"empty shape":       strings.Replace(string(data), `"shape": "shape"`, `"shape": ""`, 1),
 		"wrong owner":       strings.Replace(string(data), `"package": "example.com/p"`, `"package": "example.com/other"`, 1),

@@ -303,10 +303,9 @@ type resolutionClass uint8
 
 const (
 	resolutionNone resolutionClass = iota
-	resolutionNoClosingCertificate
+	resolutionNoClosingCapture
 	resolutionSourceMovedDuringServing
 	resolutionNoLongerDeclared
-	resolutionNoCurrentCertificate
 	resolutionSourceDependencies
 	resolutionNoCurrentCapture
 	resolutionClosureMoved
@@ -317,10 +316,9 @@ var resolutionTable = [...]struct {
 	kind   explainKind
 }{
 	resolutionNone:                     {"", 0},
-	resolutionNoClosingCertificate:     {"no closing source certificate", explainSelf},
+	resolutionNoClosingCapture:         {"no closing capture", explainSelf},
 	resolutionSourceMovedDuringServing: {"source dependencies moved during serving", explainSelf},
 	resolutionNoLongerDeclared:         {"no longer declared in the selected source", explainSelf},
-	resolutionNoCurrentCertificate:     {"no current source certificate", explainSelf},
 	resolutionSourceDependencies:       {"source dependencies", explainSelf},
 	resolutionNoCurrentCapture:         {"no current capture", explainSelf},
 	resolutionClosureMoved:             {"", explainSelf},
@@ -360,10 +358,9 @@ var closureMovedReasons = []resolutionReason{
 }
 
 var resolutionWholeClasses = []resolutionClass{
-	resolutionNoClosingCertificate,
+	resolutionNoClosingCapture,
 	resolutionSourceMovedDuringServing,
 	resolutionNoLongerDeclared,
-	resolutionNoCurrentCertificate,
 	resolutionSourceDependencies,
 	resolutionNoCurrentCapture,
 }

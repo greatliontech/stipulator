@@ -3,11 +3,9 @@ package golang
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"slices"
-	"sync"
 
-	"github.com/greatliontech/stipulator/internal/gotool"
+	"github.com/greatliontech/gofresh"
 )
 
 // selectedContext owns the configuration of one selected view. Its private
@@ -43,39 +41,30 @@ func prepareSelectedContext(root string, sel buildSelection) (*selectedContext, 
 }
 
 type endpointSelection struct {
-	selection buildSelection
-	view      *selectedContext
-	err       error
-	reader    *gotool.EnvReader
-}
-
-type sourceGraphKey struct{ selection, owner string }
-type sourceGraphResult struct {
-	digest string
-	err    error
+	selection  buildSelection
+	view       *selectedContext
+	err        error
+	session    *gofresh.Session
+	sessionErr error
+	hasSession bool
 }
 
 // selectionEndpoint is one observation boundary. It prepares each view once,
-// including a preparation failure, and owns fresh certificate file/graph memos
-// and lazy certificate environment readers. Native engines always build their
-// own independent readers; this is not a coherent generation shared with them.
-// Endpoints are local to construction, each child opening, and each key's
-// publication. Keeping one on Served would erase the closing observations.
+// including a preparation failure, and memoizes one gofresh.Session per view
+// within the endpoint. Source generations live in each Snapshot, never on
+// Session; endpoints stay local to construction, each child opening, and each
+// close publication so configuration re-observation stays fresh.
 type selectionEndpoint struct {
-	ctx         context.Context
-	root        string
-	selections  map[string]*endpointSelection
-	files       *sourceFiles
-	mu          sync.Mutex
-	graphs      map[sourceGraphKey]sourceGraphResult
-	graphLoader func(context.Context, *selectedContext, string, *sourceFiles) (string, error)
+	ctx        context.Context
+	root       string
+	selections map[string]*endpointSelection
 }
 
 func newSelectionEndpoint(ctx context.Context, root string, selections []buildSelection) *selectionEndpoint {
 	e := &selectionEndpoint{
-		ctx: ctx, root: root, selections: map[string]*endpointSelection{},
-		files:  &sourceFiles{ctx: ctx, digests: map[string]string{}},
-		graphs: map[sourceGraphKey]sourceGraphResult{},
+		ctx:        ctx,
+		root:       root,
+		selections: make(map[string]*endpointSelection, len(selections)),
 	}
 	for _, sel := range selections {
 		sel.tags = slices.Clone(sel.tags)
@@ -95,98 +84,14 @@ func (e *selectionEndpoint) selected(key string) (*selectedContext, error) {
 	return s.view, s.err
 }
 
-// certificateReader belongs only to this endpoint's certificate observation.
-// Snapshot and gofresh.ResolveToolchainSelection must consume this same reader, including for a
-// selected view with no native subject. A native fingerprint cannot replace it.
-func (e *selectionEndpoint) certificateReader(view *selectedContext) *gotool.EnvReader {
-	s := e.selections[view.key]
-	if s.reader == nil {
-		s.reader = gotool.NewEnvReader(engineRunner, view.directory, view.env)
-	}
-	return s.reader
-}
-
-func (e *selectionEndpoint) loadGraph(view *selectedContext, owner string) (string, error) {
-	if e.graphLoader != nil {
-		return e.graphLoader(e.ctx, view, owner, e.files)
-	}
-	return sourceGraph(e.ctx, view.directory, view.env, view.flags, owner, e.files)
-}
-
-func (e *selectionEndpoint) warmGraphs(view *selectedContext, owners []string) {
-	var pending []string
-	seen := make(map[string]bool, len(owners))
-	e.mu.Lock()
-	for _, owner := range owners {
-		if owner == "" || seen[owner] {
-			continue
-		}
-		seen[owner] = true
-		if _, ok := e.graphs[sourceGraphKey{view.key, owner}]; !ok {
-			pending = append(pending, owner)
-		}
-	}
-	e.mu.Unlock()
-	if len(pending) == 0 {
-		return
-	}
-	if len(pending) == 1 {
-		_, _ = e.graph(view, pending[0])
-		return
-	}
-	if e.graphLoader == nil {
-		if batch, err := sourceGraphs(e.ctx, view.directory, view.env, view.flags, pending, e.files); err == nil {
-			e.mu.Lock()
-			for _, owner := range pending {
-				key := sourceGraphKey{view.key, owner}
-				if _, exists := e.graphs[key]; !exists {
-					e.graphs[key] = batch[owner]
-				}
-			}
-			e.mu.Unlock()
-			return
-		}
-	}
-	workers := min(len(pending), max(1, runtime.GOMAXPROCS(0)))
-	ch := make(chan string, len(pending))
-	for _, owner := range pending {
-		ch <- owner
-	}
-	close(ch)
-	var wg sync.WaitGroup
-	wg.Add(workers)
-	for range workers {
-		go func() {
-			defer wg.Done()
-			for owner := range ch {
-				var res sourceGraphResult
-				res.digest, res.err = e.loadGraph(view, owner)
-				e.mu.Lock()
-				key := sourceGraphKey{view.key, owner}
-				if _, exists := e.graphs[key]; !exists {
-					e.graphs[key] = res
-				}
-				e.mu.Unlock()
-			}
-		}()
-	}
-	wg.Wait()
-}
-
-func (e *selectionEndpoint) graph(view *selectedContext, owner string) (string, error) {
-	key := sourceGraphKey{view.key, owner}
-	e.mu.Lock()
-	result, ok := e.graphs[key]
-	e.mu.Unlock()
+func (e *selectionEndpoint) session(view *selectedContext, sample toolchainSample) (*gofresh.Session, error) {
+	s, ok := e.selections[view.key]
 	if !ok {
-		result.digest, result.err = e.loadGraph(view, owner)
-		e.mu.Lock()
-		if existing, exists := e.graphs[key]; exists {
-			result = existing
-		} else {
-			e.graphs[key] = result
-		}
-		e.mu.Unlock()
+		return selectionEngine(e.ctx, view, sample)
 	}
-	return result.digest, result.err
+	if !s.hasSession {
+		s.session, s.sessionErr = selectionEngine(e.ctx, view, sample)
+		s.hasSession = true
+	}
+	return s.session, s.sessionErr
 }

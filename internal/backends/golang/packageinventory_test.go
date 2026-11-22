@@ -178,14 +178,18 @@ func TestInventoryFailureUsesOnlyBoundedTypedCandidates(t *testing.T) {
 	if res, _, _, err := failed.backend.ResolveIn("example.com/fallback/unrelated.Other"); err != nil || res != verify.NotFound {
 		t.Fatalf("typed fallback widened: %v %v", res, err)
 	}
-	if len(failed.opening) != 0 {
-		t.Fatalf("failed inventory acquired opening evidence: %v", failed.opening)
+	if len(failed.openingViews) != 0 {
+		t.Fatalf("failed inventory acquired opening evidence: %v", failed.openingViews)
 	}
 	if err := failed.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(strings.Join(failed.Notices(), "\n"), "package inventory") {
+	failedNotices := strings.Join(failed.Notices(), "\n")
+	if !strings.Contains(failedNotices, "package inventory") {
 		t.Fatalf("inventory failure unnamed: %v", failed.Notices())
+	}
+	if !strings.Contains(failedNotices, "1 without an opening capture: "+symbol) {
+		t.Fatalf("skipped symbol missing from publish account on inventory failure: %v", failed.Notices())
 	}
 	ownedRunner = original
 	again, err := NewServed(t.Context(), dir, []string{symbol})

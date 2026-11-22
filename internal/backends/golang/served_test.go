@@ -71,8 +71,8 @@ var servedSymbols = []string{"example.com/served/p.F", "example.com/served/p.H",
 // first run resolves typed and publishes records for both callables and
 // non-callable declarations (type, field, var, const); the second run
 // answers every symbol's every field identically without a typed load,
-// and re-resolves non-callable declarations when their source
-// certificate moves (REQ-evidence-resolution-freshness,
+// and re-resolves non-callable declarations when their SourceResult
+// closure moves (REQ-evidence-resolution-freshness,
 // REQ-evidence-resolution-freshness-typed-load).
 func TestServedAnswersFromRecordsWithoutTheChild(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness", "REQ-evidence-resolution-freshness-typed-load")
@@ -137,7 +137,7 @@ func TestServedAnswersFromRecordsWithoutTheChild(t *testing.T) {
 	}
 	fullyServed.Close()
 
-	// Moving a non-callable declaration invalidates its source certificate
+	// Moving a non-callable declaration invalidates its SourceResult closure
 	// and re-resolves it typed with the new shape.
 	p := filepath.Join(dir, "p", "p.go")
 	src, _ := os.ReadFile(p)
@@ -149,7 +149,7 @@ func TestServedAnswersFromRecordsWithoutTheChild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if third.ServedCount() != 0 || third.Reasons()["example.com/served/p.T"] != "source dependencies" || third.Reasons()["example.com/served/p.T.N"] != "source dependencies" {
+	if third.ServedCount() != 0 || third.Reasons()["example.com/served/p.T"] != "closure" || third.Reasons()["example.com/served/p.T.N"] != "closure" {
 		t.Fatalf("after editing T: served %d, reasons %v", third.ServedCount(), third.Reasons())
 	}
 	if got := ask(t, third, "example.com/served/p.T.N"); got.shape == cold["example.com/served/p.T.N"].shape || c.snapshot().child != 1 {
@@ -285,6 +285,64 @@ func TestServedNarrowsVanishedSubjects(t *testing.T) {
 	if err := s.Close(); err != nil {
 		t.Fatal(err)
 	}
+
+	// An older record under another selection ("race") must not overwrite the
+	// newest record's ("default") staleness reason ("closure").
+	olderRace := resolutioncache.Record{
+		Selection: "race\x00\x00\x00\x00",
+		Symbol:    "example.com/served/p.H",
+		Views: []resolutioncache.ViewEntry{
+			{Selection: "default", Present: false},
+			{Selection: "race\x00\x00\x00\x00", Present: true, Fingerprint: fingerprintFor("9")},
+		},
+		Resolution:   "resolved",
+		Shape:        "older-race-shape",
+		Package:      "example.com/served/p",
+		WitnessClass: "example",
+	}
+	if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{olderRace}); err != nil {
+		t.Fatal(err)
+	}
+	raceStore, err := resolutioncache.StoreDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	raceFile, err := olderRace.FileName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(filepath.Join(raceStore, raceFile), past, past); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(p, []byte("package p\n\nfunc H(n int) int { return n + 99 }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	staleOrder, err := NewServed(ctx, dir, []string{"example.com/served/p.H"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if staleOrder.Reasons()["example.com/served/p.H"] != "closure" {
+		t.Fatalf("newest record reason overwritten by older selection record: %v", staleOrder.Reasons())
+	}
+	_ = staleOrder.Close()
+
+	// Deleting the entire owning package directory still reports "no longer declared
+	// in the selected source" for the vanished symbol.
+	if err := os.RemoveAll(filepath.Join(dir, "p")); err != nil {
+		t.Fatal(err)
+	}
+	gonePkg, err := NewServed(ctx, dir, []string{"example.com/served/p.H"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer gonePkg.Close()
+	if got := gonePkg.Reasons()["example.com/served/p.H"]; got != "no longer declared in the selected source" {
+		t.Fatalf("whole-package deletion reason = %q, want \"no longer declared in the selected source\"", got)
+	}
+	if res, _, _, err := gonePkg.ResolveIn("example.com/served/p.H"); err != nil || res != verify.NotFound {
+		t.Fatalf("whole-package deletion resolved %v, %v; want NotFound", res, err)
+	}
 }
 
 func replaceOnce(t *testing.T, s, old, new string) string {
@@ -368,7 +426,7 @@ func TestGCResolutionsKeepsBoundAndWitnessSymbols(t *testing.T) {
 	dir := servedModule(t)
 	ctx := context.Background()
 	for _, sym := range []string{"example.com/served/p.F", "example.com/served/p.TestF", "example.com/served/p.Orphan"} {
-		if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{{Selection: "default", Symbol: sym, Fingerprint: fingerprintFor("a"), Certificate: resolutioncache.Certificate{Derivation: resolutioncache.Derivation, Inputs: strings.Repeat("e", 64)}, Resolution: "resolved", Shape: "shape", WitnessClass: "example", Package: "example.com/served/p"}}); err != nil {
+		if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{{Selection: "default", Symbol: sym, Views: viewsFor("default", "a"), Resolution: "resolved", Shape: "shape", WitnessClass: "example", Package: "example.com/served/p"}}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -389,7 +447,11 @@ func TestGCResolutionsKeepsBoundAndWitnessSymbols(t *testing.T) {
 }
 
 func fingerprintFor(closure string) witnesscache.Fingerprint {
-	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, ToolchainContent: "native-content", AdmissionPolicy: "native-policy", Guards: gofresh.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult}
+	return witnesscache.Fingerprint{MaximalClosure: strings.Repeat(closure, 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, ToolchainContent: "native-content", AdmissionPolicy: "native-policy", Guards: gofresh.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.SourceResult}
+}
+
+func viewsFor(selection, closure string) []resolutioncache.ViewEntry {
+	return []resolutioncache.ViewEntry{{Selection: selection, Present: true, Fingerprint: fingerprintFor(closure)}}
 }
 
 func bindingSet(symbols ...string) *stipulatorv1.BindingSet {
@@ -441,8 +503,8 @@ func TestServedTakesTheNewestOfADuplicatedIdentity(t *testing.T) {
 	if current.Symbol == "" {
 		t.Fatal("the first run published no record for p.F")
 	}
-	twin := current
-	twin.Fingerprint.MaximalClosure = strings.Repeat("0", 32)
+	twin := current.Clone()
+	twin.Views[0].Fingerprint.MaximalClosure = strings.Repeat("0", 32)
 	twin.Shape = "stale twin"
 	store, err := resolutioncache.StoreDir(dir)
 	if err != nil {
@@ -613,17 +675,19 @@ func TestEmptySetServingFormAdmitsItsWholeTree(t *testing.T) {
 	if s.ServedCount() != 0 || len(resolutioncache.Load(dir)) != 0 {
 		t.Fatalf("the empty-set serving form served %d and published %d", s.ServedCount(), len(resolutioncache.Load(dir)))
 	}
+	emptyNotices := strings.Join(s.Notices(), "\n")
+	if !strings.Contains(emptyNotices, "without an opening capture") || strings.Contains(emptyNotices, "without a closing capture") {
+		t.Fatalf("empty-set publish account misclassified unopened symbols: %q", emptyNotices)
+	}
 }
 
-// TestServedPublishesSubjectsWithNonSourceTiers pins the publish over a corpus
-// whose captures carry tiers the resolution store does not serve
+// TestServedPublishesSubjectsWithNonSourceTiers pins publishing over a corpus
+// with purity directives and per-record SourceResult admission
 // (REQ-evidence-resolution-cache-format,
-// REQ-evidence-resolution-freshness-typed-load): a test asserting purity in
-// source captures a purity assertion, the publisher projects the capture onto
-// the source tiers and records it beside the plain callable, the notices
-// account for the publish, and the second run serves both without the child —
-// where a store refusing the batch on that one record published nothing for
-// the whole corpus and said nothing.
+// REQ-evidence-resolution-freshness-typed-load): a test carrying //gofresh:pure
+// produces pure SourceResult tiers on its own, and when a capture carries a
+// non-SourceResult tier for one symbol, that symbol alone is refused and named
+// under "refused on their source tiers" while its sibling's record installs.
 func TestServedPublishesSubjectsWithNonSourceTiers(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-cache-format", "REQ-evidence-resolution-freshness-typed-load")
 	if testing.Short() {
@@ -659,10 +723,10 @@ func TestServedPublishesSubjectsWithNonSourceTiers(t *testing.T) {
 	}
 	recorded := map[string]witnesscache.Fingerprint{}
 	for _, rec := range resolutioncache.Load(dir) {
-		recorded[rec.Symbol] = rec.Fingerprint
+		recorded[rec.Symbol] = rec.Views[0].Fingerprint
 	}
 	if len(recorded) != 2 || recorded["example.com/pure/p.TestF"].PurityAssertion != "" || !resolutioncache.Admits(recorded["example.com/pure/p.TestF"]) {
-		t.Fatalf("records = %+v, want both symbols on source tiers alone", recorded)
+		t.Fatalf("records = %+v, want both symbols on SourceResult tiers alone", recorded)
 	}
 	c := countSpawns(t)
 	second, err := NewServed(ctx, dir, symbols)
@@ -674,6 +738,44 @@ func TestServedPublishesSubjectsWithNonSourceTiers(t *testing.T) {
 	}
 	if err := second.Close(); err != nil {
 		t.Fatal(err)
+	}
+
+	// Injecting a non-SourceResult tier on one symbol refuses and names that
+	// symbol alone without blocking its sibling's record installation.
+	refusalDir := writeModule(t, map[string]string{
+		"go.mod":                       "module example.com/refusedone\n\ngo 1.26\n",
+		"p/p.go":                       "package p\n\nfunc F(n int) int { return n + 1 }\n\nfunc G(n int) int { return n + 2 }\n",
+		".stipulator/policy.textproto": "invocations {\n  name: \"all\"\n  timeout {\n    seconds: 300\n  }\n  go {\n    packages: \"./...\"\n  }\n}\n",
+	})
+	refusalSyms := []string{"example.com/refusedone/p.F", "example.com/refusedone/p.G"}
+	tainted, err := NewServed(ctx, refusalDir, refusalSyms)
+	if err != nil {
+		t.Fatal(err)
+	}
+	prior := captureForTest
+	captureForTest = func(_ string, capture map[gofresh.Subject]gofresh.Fingerprint) map[gofresh.Subject]gofresh.Fingerprint {
+		subj := gofresh.Subject{Package: "example.com/refusedone/p", Symbol: "G"}
+		if fp, ok := capture[subj]; ok {
+			fp.PurityAssertion = "caller"
+			capture[subj] = fp
+		}
+		return capture
+	}
+	t.Cleanup(func() { captureForTest = prior })
+	for _, sym := range refusalSyms {
+		ask(t, tainted, sym)
+	}
+	if err := tainted.Close(); err != nil {
+		t.Fatal(err)
+	}
+	captureForTest = prior
+	taintedNotices := strings.Join(tainted.Notices(), "\n")
+	if !strings.Contains(taintedNotices, "resolution published under \"default\": 1 record; 1 refused on their source tiers: example.com/refusedone/p.G") {
+		t.Fatalf("per-record tier refusal notice = %q", taintedNotices)
+	}
+	installed := resolutioncache.Load(refusalDir)
+	if len(installed) != 1 || installed[0].Symbol != "example.com/refusedone/p.F" {
+		t.Fatalf("installed records = %+v, want p.F alone", installed)
 	}
 }
 
@@ -820,7 +922,7 @@ func TestServedCounterCountsCompletedResolutionsNotFrontier(t *testing.T) {
 	}
 }
 
-func TestNewServedCheckingCertificatesScopedToRecordedSymbols(t *testing.T) {
+func TestNewServedSourceChecksScopedToRecordedSymbols(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-resolution-freshness")
 	if testing.Short() {
 		t.Skip("loads a fixture module's types and views")
@@ -835,11 +937,12 @@ func TestNewServedCheckingCertificatesScopedToRecordedSymbols(t *testing.T) {
 	const unrecSym = "example.com/scopedcerts/unrecorded.G"
 	publishResolution(t, dir, recSym)
 
-	oldHook := commandHook
-	t.Cleanup(func() { commandHook = oldHook })
+	oldEngineHook := engineCommandHook
+	t.Cleanup(func() { engineCommandHook = oldEngineHook })
 	unrecordedQueried := 0
-	commandHook = func(name string, args []string) {
-		if name == "go" && strings.Contains(strings.Join(args, " "), "-deps") && strings.Contains(strings.Join(args, " "), "example.com/scopedcerts/unrecorded") {
+	engineCommandHook = func(cmd *exec.Cmd) {
+		joined := strings.Join(cmd.Args, " ")
+		if strings.Contains(joined, "-deps") && strings.Contains(joined, "example.com/scopedcerts/unrecorded") {
 			unrecordedQueried++
 		}
 	}
@@ -852,7 +955,7 @@ func TestNewServedCheckingCertificatesScopedToRecordedSymbols(t *testing.T) {
 		t.Fatalf("served %d, want 1", s.ServedCount())
 	}
 	if unrecordedQueried != 0 {
-		t.Fatalf("NewServed checkingCertificates queried unrecorded owner package %d times, want 0", unrecordedQueried)
+		t.Fatalf("NewServed source checks queried unrecorded owner package %d times, want 0", unrecordedQueried)
 	}
 }
 
@@ -952,8 +1055,8 @@ type StableConfig struct{ Max int }
 		t.Fatal(err)
 	}
 
-	// Mutate Compute so p's source certificate moves while q's non-callables stay
-	// valid; p's callables and non-callables become stale in serveSelection and enter
+	// Mutate Compute so p's SourceResult closure moves while q's non-callables stay
+	// valid; p's callables and non-callables become stale in serveRecords and enter
 	// s.unserved alongside the secondary "race" selection.
 	if err := os.WriteFile(filepath.Join(dir, "p", "p.go"), []byte(`package p
 
@@ -976,9 +1079,8 @@ func Helper() string    { return string(DefaultStrategy) }
 	}
 
 	// Between NewServed and Resolve (which triggers ensureBackend -> openingCapture),
-	// reuseCheckedCapture on "default" + syntactic default non-callable filtering +
-	// reuseCheckingCertificates must satisfy openingCapture across both "default" and
-	// "race" with zero additional gofresh engine subprocesses.
+	// reuseCheckedView across "default" and "race" satisfies openingCapture with
+	// zero additional gofresh engine subprocesses.
 	var engineSpawnsDuringOpening atomic.Int32
 	func() {
 		oldEngineHook := engineCommandHook
@@ -987,7 +1089,7 @@ func Helper() string    { return string(DefaultStrategy) }
 		resolveAll(stale)
 	}()
 	if got := engineSpawnsDuringOpening.Load(); got != 0 {
-		t.Fatalf("openingCapture spawned %d gofresh engine commands despite fresh checked captures and default non-callable filtering, want 0", got)
+		t.Fatalf("openingCapture spawned %d gofresh engine commands despite fresh checkedViews across selections, want 0", got)
 	}
 	if err := stale.Close(); err != nil {
 		t.Fatal(err)
@@ -1003,10 +1105,11 @@ func Helper() string    { return string(DefaultStrategy) }
 	}
 	_ = warm.Close()
 
-	// Whole-selection degradation: mutate p so probeSubjects is non-empty while q's
-	// non-callables still pass certificate validation into validNonCallables, then
-	// fail gofresh's `go list` inside narrowAndCapture (while certificateReader's
-	// `go env` succeeds) so validNonCallables must not leak into s.served.
+	// Per-package isolation vs whole-selection degradation:
+	// 1. Mutate p while q stays cached in scanfacts and fail `go list`: p's 4
+	//    symbols degrade by name while q's 2 independent symbols still serve.
+	// 2. Fail `go env` (shared selection configuration): whole selection degrades
+	//    with ServedCount == 0 and a single `selection "default": ...` notice.
 	if err := os.WriteFile(filepath.Join(dir, "p", "p.go"), []byte(`package p
 
 type Strategy string
@@ -1019,12 +1122,32 @@ func Helper() string    { return string(DefaultStrategy) }
 		t.Fatal(err)
 	}
 	missingBin := filepath.Join(t.TempDir(), "missing-go")
-	var degradedServed *Served
+	var isolatedServed *Served
 	func() {
 		oldEngineHook := engineCommandHook
 		defer func() { engineCommandHook = oldEngineHook }()
 		engineCommandHook = func(cmd *exec.Cmd) {
 			if slices.Contains(cmd.Args, "list") {
+				cmd.Path = missingBin
+			}
+		}
+		isolatedServed, err = NewServed(t.Context(), dir, syms)
+	}()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if isolatedServed.ServedCount() != 2 || len(isolatedServed.Degraded()) != 4 {
+		t.Fatalf("per-package isolation: ServedCount=%d Degraded=%v, want ServedCount=2 (q) and 4 degraded p symbols",
+			isolatedServed.ServedCount(), isolatedServed.Degraded())
+	}
+	_ = isolatedServed.Close()
+
+	var degradedServed *Served
+	func() {
+		oldEngineHook := engineCommandHook
+		defer func() { engineCommandHook = oldEngineHook }()
+		engineCommandHook = func(cmd *exec.Cmd) {
+			if slices.Contains(cmd.Args, "env") {
 				cmd.Path = missingBin
 			}
 		}
@@ -1040,8 +1163,8 @@ func Helper() string    { return string(DefaultStrategy) }
 	_ = degradedServed.Close()
 
 	// Refactor Strategy from a non-callable type into a callable function:
-	// serveSelection probes stale non-callables through gofresh, capturing Strategy's
-	// new callable fingerprint so it publishes on the first run.
+	// serveRecords probes stale non-callables through gofresh, capturing Strategy's
+	// new callable SourceResult fingerprint so it publishes on the first run.
 	if err := os.WriteFile(filepath.Join(dir, "p", "p.go"), []byte(`package p
 
 func Strategy() string { return "callable" }

@@ -945,12 +945,12 @@ func (g *captureGroup) directory(root string) string {
 // root, and the operation's progress seam — freshness capture and validation
 // are the longest silent stretches of a run, so gofresh's own analysis steps
 // feed the seam as rate-limited keepalives and the engine diagnostic face.
-func newEngine(ctx context.Context, dir string, env, flags []string, evidenceRoot string) (*gofresh.Session, error) {
+func newEngine(ctx context.Context, dir string, env, flags []string, evidenceRoot string, inputs ...string) (*gofresh.Session, error) {
 	return gofresh.NewSession(ctx, gofresh.BuildDescription{
 		Directory:   dir,
 		Environment: env,
 		Flags:       flags,
-		Inputs:      []string{},
+		Inputs:      append([]string{}, inputs...),
 	}, gofresh.SessionPolicy{
 		EvidenceRoot: evidenceRoot,
 		// The engine's own go commands ride the owned boundary

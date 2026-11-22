@@ -1,6 +1,7 @@
 package golang
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -22,8 +23,8 @@ func selectedContextForTest(t *testing.T, dir string, sel buildSelection) *selec
 }
 
 // Count the configuration input read, not incidental native subprocesses.
-// Two genuinely different selections must each prepare once, while fresh
-// inventory queries still happen on every certificate capture.
+// Two genuinely different selections must each prepare once within an endpoint,
+// while verifyInventoryUnchanged performs fresh inventory queries on every call.
 func TestSelectionEndpointPreparesOnceAcrossConsumers(t *testing.T) {
 	neutralAmbient(t)
 	dir := writeModule(t, map[string]string{
@@ -53,8 +54,8 @@ func TestSelectionEndpointPreparesOnceAcrossConsumers(t *testing.T) {
 		}
 	}
 	endpoint := newSelectionEndpoint(s.ctx, s.dir, s.sels)
-	if empty, err := s.captureSourceCertificates(nil, nil); err != nil || len(empty) != 0 || preparations != 0 || inventories != 0 {
-		t.Fatalf("empty capture observed inputs: %v %v preparations=%d inventories=%d", empty, err, preparations, inventories)
+	if err := s.verifyInventoryUnchanged(endpoint, "default", nil); err != nil || preparations != 0 || inventories != 0 {
+		t.Fatalf("empty inventory check observed inputs: %v preparations=%d inventories=%d", err, preparations, inventories)
 	}
 	s.inventoryPackages(endpoint, symbols)
 	if !s.inventoryComplete() {
@@ -62,44 +63,43 @@ func TestSelectionEndpointPreparesOnceAcrossConsumers(t *testing.T) {
 	}
 	var captures []gofresh.Fingerprint
 	for _, sel := range s.sels {
-		fps, _, ok := s.captureUnder(endpoint, sel.key(), symbols, "opening")
-		if !ok || len(fps) != 1 {
-			t.Fatalf("capture under %q: %v; %v", sel.key(), fps, s.Notices())
+		cap, ok := s.captureSourceView(endpoint, sel.key(), symbols, "opening")
+		if !ok || len(cap.present) != 1 {
+			t.Fatalf("capture under %q: %+v; %v", sel.key(), cap, s.Notices())
 		}
-		captures = append(captures, fps[gofresh.Subject{Package: "example.com/prepared", Symbol: "F"}])
+		captures = append(captures, cap.present[gofresh.Subject{Package: "example.com/prepared", Symbol: "F"}])
 	}
 	if closureMoved(captures[0], captures[1]) == "" {
 		t.Fatal("positive control lost the distinct selected declarations")
 	}
-	first, err := s.captureSourceCertificates(endpoint, symbols)
-	if err != nil || first[symbol].Inputs == "" {
-		t.Fatalf("certificate: %v %v", first, err)
-	}
 	before := inventories
-	second, err := s.captureSourceCertificates(endpoint, symbols)
-	if err != nil || first[symbol] != second[symbol] {
-		t.Fatalf("same endpoint certificate moved: %v %v", second, err)
+	for _, sel := range s.sels {
+		if err := s.verifyInventoryUnchanged(endpoint, sel.key(), symbols); err != nil {
+			t.Fatalf("verifyInventoryUnchanged(%q): %v", sel.key(), err)
+		}
 	}
 	if inventories-before != len(s.sels) {
-		t.Fatalf("certificate reused inventory observations: before=%d after=%d", before, inventories)
+		t.Fatalf("inventory check reused stale observations: before=%d after=%d", before, inventories)
 	}
 	if preparations != len(s.sels) {
 		t.Fatalf("configuration assembled %d times for %d selections", preparations, len(s.sels))
 	}
 	closing := newSelectionEndpoint(s.ctx, s.dir, s.sels)
-	if _, err := s.captureSourceCertificates(closing, symbols); err != nil {
-		t.Fatal(err)
+	for _, sel := range s.sels {
+		if err := s.verifyInventoryUnchanged(closing, sel.key(), symbols); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if preparations != 2*len(s.sels) {
 		t.Fatalf("new endpoint did not prepare independently: %d", preparations)
 	}
-	// The default declaration now disappears. A fresh inventory must refuse
-	// against the original boundary even if this endpoint already has a graph.
+	// The default declaration now disappears. A fresh inventory check must
+	// refuse against the original boundary without mutating s.inventory.
 	if err := os.WriteFile(filepath.Join(dir, "plain.go"), []byte("//go:build absent\n\npackage prepared\nfunc F() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if certs, err := s.captureSourceCertificates(endpoint, symbols); err == nil || !strings.Contains(err.Error(), "inventory changed") || len(certs) != 0 {
-		t.Fatalf("changed inventory certified from endpoint state: %v %v", certs, err)
+	if err := s.verifyInventoryUnchanged(endpoint, "default", symbols); !errors.Is(err, errInventoryChanged) {
+		t.Fatalf("changed inventory accepted: %v", err)
 	}
 	if !s.inventory["default"]["example.com/prepared"] {
 		t.Fatal("a current inventory replaced the initial declaration boundary")
@@ -176,63 +176,37 @@ func TestSelectedContextPreservesConsumerViews(t *testing.T) {
 			if wantWork != "off" && (!inventory["example.com/helper"] || !inventoryDirs[filepath.Join(dir, "helper")]) {
 				t.Fatalf("workspace inventory missed its owning member: %v %v", inventory, inventoryDirs)
 			}
-			phase = "native"
-			engine, err := selectionEngine(t.Context(), view, newToolchainSample())
+			phase = "source"
+			engine, err := endpoint.session(view, newToolchainSample())
 			if err != nil {
 				t.Fatal(err)
 			}
-			subject := gofresh.Subject{Package: "example.com/shared", Symbol: "F"}
-			native, err := engine.Snapshot(t.Context(), []gofresh.Subject{subject}, gofresh.CodeResult)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := native.CaptureBatch(t.Context()); err != nil {
-				t.Fatal(err)
-			}
-			phase = "certificate"
-			reader := endpoint.certificateReader(view)
-			snapshot, err := reader.Snapshot(t.Context())
-			if err != nil || snapshot.Value("GOWORK") != wantWork {
-				t.Fatalf("certificate workspace: %v %v", snapshot, err)
-			}
-			certSess, err := gofresh.NewSession(t.Context(), gofresh.BuildDescription{
-				Directory:   reader.Dir,
-				Environment: reader.Env,
-				Flags:       view.flags,
-				Inputs:      []string{},
-			}, gofresh.SessionPolicy{
-				EvidenceRoot:   dir,
-				PrepareCommand: reader.Runner.PrepareCommand,
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := certSess.ToolchainSelection(t.Context()); err != nil {
-				t.Fatal(err)
-			}
-			graph, err := endpoint.graph(view, "example.com/shared")
-			if err != nil || graph == "" {
-				t.Fatalf("certificate graph: %q %v", graph, err)
-			}
+			subjects := []gofresh.Subject{{Package: "example.com/shared", Symbol: "F"}}
 			if wantWork != "off" {
-				if _, err := endpoint.graph(view, "example.com/helper"); err != nil {
-					t.Fatalf("selected-directory graph of another member: %v", err)
-				}
+				subjects = append(subjects, gofresh.Subject{Package: "example.com/helper", Symbol: "H"})
 			}
-			for _, consumer := range []string{"inventory", "native", "certificate"} {
+			snap, err := engine.Snapshot(t.Context(), subjects, gofresh.SourceResult)
+			if err != nil {
+				t.Fatal(err)
+			}
+			fps, err := snap.CaptureBatch(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, consumer := range []string{"inventory", "source"} {
 				if seen[consumer] == 0 {
 					t.Errorf("%s command path was not exercised", consumer)
 				}
 			}
 			if wantWork == "off" {
-				independent = append(independent, graph)
+				independent = append(independent, fps[gofresh.Subject{Package: "example.com/shared", Symbol: "F"}].MaximalClosure)
 			} else if view.modules["helper"] != "example.com/helper" {
 				t.Fatalf("workspace member ownership lost: %v", view.modules)
 			}
 		})
 	}
 	if len(independent) != 2 || independent[0] == independent[1] {
-		t.Fatalf("equal import paths in independent roots shared a graph: %v", independent)
+		t.Fatalf("equal import paths in independent roots shared a closure: %v", independent)
 	}
 }
 

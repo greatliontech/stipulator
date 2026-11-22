@@ -2,13 +2,10 @@ package golang
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"runtime/debug"
-	"slices"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -32,85 +29,9 @@ func noteTypedLoad() {
 	}
 }
 
-// resolutionWire renders a resolution for persistence in resolution records.
-func resolutionWire(r verify.Resolution) string {
-	switch r {
-	case verify.Resolved:
-		return "resolved"
-	case verify.NotFound:
-		return "not_found"
-	case verify.GeneratedFile:
-		return "generated_file"
-	}
-	return "unverified"
-}
-
-// resolutionFromWire parses a persisted resolution, reporting whether the
-// value is known.
-func resolutionFromWire(s string) (verify.Resolution, bool) {
-	switch s {
-	case "resolved":
-		return verify.Resolved, true
-	case "not_found":
-		return verify.NotFound, true
-	case "generated_file":
-		return verify.GeneratedFile, true
-	case "unverified":
-		return verify.Unverified, true
-	}
-	return verify.NotFound, false
-}
-
-// classWire renders a witness class for persistence in resolution records.
-func classWire(c verify.WitnessClass) string {
-	switch c {
-	case verify.AnalyzerProof:
-		return "proof"
-	case verify.PropertyWitness:
-		return "property"
-	}
-	return "example"
-}
-
-// classFromWire parses a persisted witness class, reporting whether the
-// value is known.
-func classFromWire(s string) (verify.WitnessClass, bool) {
-	switch s {
-	case "proof":
-		return verify.AnalyzerProof, true
-	case "property":
-		return verify.PropertyWitness, true
-	case "example":
-		return verify.ExampleWitness, true
-	}
-	return verify.ExampleWitness, false
-}
-
-// selectionEngine is the freshness engine for one resolution build
-// selection: it loads the selection's sources exactly as the backend's
-// typed view does — the same environment, tags and module mode
-// (selectionViewEnv, selectionViewFlags) — so a resolution record's
-// fingerprint is captured and checked under the view that produced the
-// resolution (REQ-evidence-resolution-freshness). Resolution observes
-// no runtime input, so every check closes its own window: no deferred
-// close, no producer environment.
-func selectionEngine(ctx context.Context, view *selectedContext, sample toolchainSample) (*gofresh.Session, error) {
-	// The same provenance prerequisite the typed view enforces,
-	// in the same form — every member sampled where its view loads
-	// (checkSelectionMembers): an identified selection toolchain this
-	// binary's frontend cannot read refuses before any verdict, while a
-	// member whose toolchain cannot be sampled is left to this engine's
-	// own loads (REQ-evidence-toolchain-provenance) — so a served view
-	// refuses exactly when the typed load would.
-	if err := checkSelectionMembers(ctx, view.root, view.env, view.members, view.selection.toolchain, sample); err != nil {
-		return nil, err
-	}
-	return newEngine(ctx, view.directory, view.env, view.flags, view.root)
-}
-
 // Served is the verification backend that answers a binding's
-// resolution from a resolution record proven fresh by gofresh and loads
-// the typed backend only for the stale remainder
+// resolution from a multi-view SourceResult record proven fresh by gofresh and
+// loads the typed backend only for the stale remainder
 // (REQ-evidence-resolution-freshness). One per operation, constructed
 // with the operation's whole symbol set — every bound symbol and every
 // witness subject — so the served and stale sets are known before any
@@ -140,54 +61,33 @@ type Served struct {
 	set map[string]bool
 	// inventory is metadata only: package boundaries are established
 	// before capture and typed scope, never guessed from a dot position.
-	inventory      map[string]map[string]bool
-	inventoryFiles map[string]map[string][]string
+	inventory map[string]map[string]bool
 	// unserved is every requested symbol without a served record — the
 	// typed load's scope and the opening capture's subjects.
-	unserved []string
-	// opening holds, per selection key, the fingerprints captured when
-	// the typed load opened: a record publishes only when its closing
-	// capture equals its opening one, so a resolution answered from the
-	// typed load's snapshot is never recorded under a fingerprint of a tree
-	// that moved after it (the straddle check).
-	opening              map[string]map[gofresh.Subject]gofresh.Fingerprint
-	openingUnknown       map[string]map[gofresh.Subject]bool
-	openingCertificates  map[string]resolutioncache.Certificate
-	checkingCertificates map[string]resolutioncache.Certificate
-	checkedCaptures      map[string]map[gofresh.Subject]gofresh.Fingerprint
-	checkedUnknown       map[string]map[gofresh.Subject]bool
-	reopened             bool
-	backend              *Backend
-	backendErr           error
-	backendLoaded        bool
-	typedLoads           int
-	answers              map[string]symbolAnswer
-	pending              map[string][]string
+	unserved        []string
+	initialEndpoint *selectionEndpoint
+	// openingViews holds, per selection key, the SourceResult captures taken
+	// when the typed load opened: a record publishes only when its closing
+	// multi-view capture equals its opening one under unchanged package
+	// boundaries (REQ-evidence-resolution-freshness-typed-load).
+	openingViews  map[string]sourceViewCapture
+	checkedViews  map[string]sourceViewCapture
+	reopened      bool
+	backend       *Backend
+	backendErr    error
+	backendLoaded bool
+	typedLoads    int
+	answers       map[string]symbolAnswer
+	pending       map[string][]string
 	// refusals holds, per symbol the typed backend was asked about, its serving
 	// refusal or "" — the absence is an answer too.
 	refusals map[string]string
 	// reasons names, per recorded symbol that did not serve, why: the
 	// freshness verdict's reason, or the vanishing — the operator's
 	// account of a typed resolution.
-	reasons  map[string]resolutionReason
-	degraded []string
-	// published is the publish's account per selection key: the records
-	// installed, the symbols skipped because their closure moved between
-	// the opening and the closing capture, the symbols without an
-	// opening or a closing capture under the key, and the records the
-	// store refused on their source tiers — never silent, the notices
-	// state it, so a run that publishes nothing says why.
+	reasons   map[string]resolutionReason
+	degraded  []string
 	published map[string]publishAccount
-}
-
-// publishAccount is one publish's account under a selection key: the
-// records installed and, per class a symbol was kept out by, the symbols
-// themselves — a skipped symbol is named, never only counted, because an
-// operator reads the account to learn which bindings pay the typed
-// resolution every run and why.
-type publishAccount struct {
-	installed                            int
-	moved, unopened, uncaptured, refused []string
 }
 
 var (
@@ -219,7 +119,8 @@ type symbolAnswer struct {
 
 // NewServed prepares the serving form of the backend: records loaded,
 // each selection's recorded subjects viewed under that selection's
-// engine and batch-checked, the valid ones served, everything else
+// SourceResult session, multi-view precedence and fingerprints verified,
+// closing interval re-observed, the valid ones served, everything else
 // stale — a fault on the serving path degrades the affected symbols to
 // the typed resolution, never the operation
 // (REQ-evidence-freshness-degrade). An empty symbol set serves nothing
@@ -238,87 +139,17 @@ func NewServed(ctx context.Context, dir string, symbols []string) (*Served, erro
 	}
 	s.sels = sels
 	endpoint := newSelectionEndpoint(ctx, abs, sels)
-	// An operation that named symbols is scoped to them; one that named
-	// none leaves the set nil, which admits every symbol — the one
-	// encoding the whole-tree form shares.
+	s.initialEndpoint = endpoint
 	if len(symbols) > 0 {
-		wanted := map[string]bool{}
+		wanted := make(map[string]bool, len(symbols))
 		for _, sym := range symbols {
 			wanted[sym] = true
 		}
 		s.set = wanted
 		s.inventoryPackages(endpoint, symbols)
-	}
-	bySelection := map[string][]resolutioncache.Record{}
-	var recordedSymbols []string
-	seenRecorded := map[string]bool{}
-	for _, rec := range resolutioncache.Load(abs) {
-		if !s.inventoryComplete() {
-			continue
-		}
-		if !s.set[rec.Symbol] {
-			continue
-		}
-		if _, known := s.selection(rec.Selection); !known {
-			continue
-		}
-		if pkg, ok := s.packageOf(rec.Symbol); !ok || pkg != rec.Package || !s.inventory[rec.Selection][pkg] {
-			continue
-		}
-		bySelection[rec.Selection] = append(bySelection[rec.Selection], rec)
-		if !seenRecorded[rec.Symbol] {
-			seenRecorded[rec.Symbol] = true
-			recordedSymbols = append(recordedSymbols, rec.Symbol)
-		}
-	}
-	keys := make([]string, 0, len(bySelection))
-	for key := range bySelection {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	if len(keys) > 0 {
-		sort.Strings(recordedSymbols)
-		certs, err := s.captureSourceCertificates(endpoint, recordedSymbols)
-		if err != nil {
-			s.degraded = append(s.degraded, "source certificate: "+err.Error())
-		}
-		s.checkingCertificates = certs
-	}
-	for _, key := range keys {
-		s.serveSelection(endpoint, key, bySelection[key])
-	}
-	if beforeCertificateCloseForTest != nil {
-		beforeCertificateCloseForTest()
-	}
-	if len(s.served) > 0 {
-		var names []string
-		for name := range s.served {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		closingEndpoint := newSelectionEndpoint(ctx, abs, sels)
-		closing, err := s.captureSourceCertificates(closingEndpoint, names)
-		revoked := false
-		for _, name := range names {
-			closed, ok := closing[name]
-			if !ok {
-				delete(s.served, name)
-				s.reasons[name] = resolutionNoClosingCertificate.with("")
-				revoked = true
-			} else if sourceCertificateMoved(s.checkingCertificates[name], closed) {
-				delete(s.served, name)
-				s.reasons[name] = resolutionSourceMovedDuringServing.with("")
-				revoked = true
-			}
-		}
-		if revoked {
-			clear(s.checkedCaptures)
-			clear(s.checkedUnknown)
-			s.checkingCertificates = nil
-		}
-		if err != nil {
-			s.degraded = append(s.degraded, "closing source certificate: "+err.Error())
-		}
+		s.serveRecords(endpoint)
+	} else if beforeServingCloseForTest != nil {
+		beforeServingCloseForTest()
 	}
 	for _, sym := range symbols {
 		if _, ok := s.served[sym]; !ok {
@@ -357,7 +188,7 @@ func BackendSet(s *Served) map[string]verify.Backend {
 // whole tree with nothing served or published and no selection read,
 // so a policy the tree cannot parse refuses only where the typed path
 // refuses it — at the first answer, through the typed load. The
-// Unscoped declaration-reading roles (blanket pinning, retargeting, impact,
+// unscoped declaration-reading roles (blanket pinning, retargeting, impact,
 // the declaration frontier and the partitions) take this form; explicit
 // authoring uses NewDeclarations.
 func NewWholeTree(ctx context.Context, dir string) (*Served, error) {
@@ -376,16 +207,15 @@ func newServed(ctx context.Context, dir string) (*Served, error) {
 		return nil, err
 	}
 	return &Served{
-		sample:          newToolchainSample(),
-		ctx:             ctx,
-		dir:             abs,
-		served:          map[string]resolutioncache.Record{},
-		checkedCaptures: map[string]map[gofresh.Subject]gofresh.Fingerprint{},
-		checkedUnknown:  map[string]map[gofresh.Subject]bool{},
-		answers:         map[string]symbolAnswer{},
-		pending:         map[string][]string{},
-		refusals:        map[string]string{},
-		reasons:         map[string]resolutionReason{},
+		sample:       newToolchainSample(),
+		ctx:          ctx,
+		dir:          abs,
+		served:       map[string]resolutioncache.Record{},
+		checkedViews: map[string]sourceViewCapture{},
+		answers:      map[string]symbolAnswer{},
+		pending:      map[string][]string{},
+		refusals:     map[string]string{},
+		reasons:      map[string]resolutionReason{},
 	}, nil
 }
 
@@ -435,422 +265,6 @@ func (s *Served) loadPatterns() []string {
 	sort.Strings(out)
 	return out
 }
-
-// openingCapture fingerprints every unserved subject under every
-// selection before the typed load opens: the fingerprints a record may
-// publish under, contemporaneous with the snapshot the typed load answers
-// from. Unknown subjects are narrowed by gofresh's refusal; a fault
-// leaves the selection uncaptured, so nothing publishes under it.
-func (s *Served) openingCapture() {
-	s.opening = map[string]map[gofresh.Subject]gofresh.Fingerprint{}
-	s.openingUnknown = map[string]map[gofresh.Subject]bool{}
-	s.openingCertificates = nil
-	if len(s.unserved) == 0 {
-		return
-	}
-	canReuseInitial := !s.reopened && beforeCertificateCloseForTest == nil && captureForTest == nil && len(s.degraded) == 0 && s.inventoryComplete()
-	var endpoint *selectionEndpoint
-	getEndpoint := func() *selectionEndpoint {
-		if endpoint == nil {
-			endpoint = newSelectionEndpoint(s.ctx, s.dir, s.sels)
-		}
-		return endpoint
-	}
-	remaining := slices.Clone(s.unserved)
-	for _, sel := range s.sels {
-		key := sel.key()
-		var fps map[gofresh.Subject]gofresh.Fingerprint
-		var unknown map[gofresh.Subject]bool
-		var ok bool
-		if canReuseInitial {
-			fps, unknown, ok = s.reuseCheckedCapture(key, remaining)
-		}
-		if !ok {
-			fps, unknown, ok = s.captureUnder(getEndpoint(), key, remaining, "opening")
-		}
-		if ok {
-			s.opening[key] = fps
-			s.openingUnknown[key] = unknown
-			if sel.isDefault() && captureForTest == nil && (len(fps) > 0 || (len(unknown) > 0 && !s.reopened)) {
-				var defaultDecls map[string]map[string]bool
-				kept := remaining[:0]
-				for _, sym := range remaining {
-					subject, hasSubj := s.subjectOf(sym)
-					if !hasSubj {
-						kept = append(kept, sym)
-						continue
-					}
-					if _, captured := fps[subject]; captured {
-						continue
-					}
-					if unknown[subject] && !s.reopened {
-						if defaultDecls == nil {
-							defaultDecls = map[string]map[string]bool{}
-						}
-						decls, parsed := defaultDecls[subject.Package]
-						if !parsed {
-							decls = parseNonCallableSymbols(s.inventoryFiles[key][subject.Package])
-							defaultDecls[subject.Package] = decls
-						}
-						if decls[subject.Symbol] {
-							continue
-						}
-					}
-					kept = append(kept, sym)
-				}
-				remaining = kept
-			}
-		}
-	}
-	if canReuseInitial {
-		if certs, ok := s.reuseCheckingCertificates(s.unserved); ok {
-			s.openingCertificates = certs
-			return
-		}
-	}
-	certs, err := s.captureSourceCertificates(getEndpoint(), s.unserved)
-	if err != nil {
-		s.degraded = append(s.degraded, "opening source certificate: "+err.Error())
-	}
-	s.openingCertificates = certs
-}
-
-func (s *Served) reuseCheckedCapture(key string, symbols []string) (map[gofresh.Subject]gofresh.Fingerprint, map[gofresh.Subject]bool, bool) {
-	checkedFPs, hasKey := s.checkedCaptures[key]
-	checkedUnk := s.checkedUnknown[key]
-	fps := map[gofresh.Subject]gofresh.Fingerprint{}
-	unknown := map[gofresh.Subject]bool{}
-	for _, sym := range symbols {
-		subject, ok := s.subjectOf(sym)
-		if !ok {
-			continue
-		}
-		if s.set != nil && !s.inventory[key][subject.Package] {
-			continue
-		}
-		if !hasKey {
-			return nil, nil, false
-		}
-		if fp, ok := checkedFPs[subject]; ok {
-			fps[subject] = fp
-		} else if checkedUnk[subject] {
-			unknown[subject] = true
-		} else {
-			return nil, nil, false
-		}
-	}
-	return fps, unknown, true
-}
-
-func (s *Served) reuseCheckingCertificates(symbols []string) (map[string]resolutioncache.Certificate, bool) {
-	if len(s.checkingCertificates) == 0 {
-		return nil, false
-	}
-	certs := make(map[string]resolutioncache.Certificate, len(symbols))
-	for _, sym := range symbols {
-		cert, ok := s.checkingCertificates[sym]
-		if !ok {
-			return nil, false
-		}
-		certs[sym] = cert
-	}
-	return certs, true
-}
-
-func narrowAndCapture(ctx context.Context, engine *gofresh.Session, subjects []gofresh.Subject, onGone func(gofresh.Subject)) (map[gofresh.Subject]gofresh.Fingerprint, map[gofresh.Subject]bool, error) {
-	unknownSubjects := map[gofresh.Subject]bool{}
-	var view *gofresh.Snapshot
-	for len(subjects) > 0 {
-		var err error
-		view, err = engine.Snapshot(ctx, subjects, gofresh.CodeResult)
-		var unknown *gofresh.UnknownSubjectsError
-		if errors.As(err, &unknown) {
-			gone := map[gofresh.Subject]bool{}
-			for _, subject := range unknown.Subjects {
-				gone[subject] = true
-				unknownSubjects[subject] = true
-				if onGone != nil {
-					onGone(subject)
-				}
-			}
-			if len(gone) == 0 {
-				return nil, nil, err
-			}
-			kept := subjects[:0]
-			for _, subject := range subjects {
-				if !gone[subject] {
-					kept = append(kept, subject)
-				}
-			}
-			subjects = kept
-			continue
-		}
-		if err != nil {
-			return nil, nil, err
-		}
-		break
-	}
-	fps := map[gofresh.Subject]gofresh.Fingerprint{}
-	if len(subjects) > 0 {
-		var err error
-		fps, err = view.CaptureBatch(ctx)
-		if err != nil {
-			return nil, nil, err
-		}
-	}
-	return fps, unknownSubjects, nil
-}
-
-// captureUnder builds a view over the symbols' subjects under one
-// selection, narrowing the subjects the selected source does not
-// declare, and captures their fingerprints alongside the narrowed
-// non-callable/unknown subject set.
-func (s *Served) captureUnder(endpoint *selectionEndpoint, key string, symbols []string, phase string) (map[gofresh.Subject]gofresh.Fingerprint, map[gofresh.Subject]bool, bool) {
-	if !s.inventoryComplete() {
-		return nil, nil, false
-	}
-	selected, err := endpoint.selected(key)
-	if err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-		return nil, nil, false
-	}
-	var subjects []gofresh.Subject
-	for _, sym := range symbols {
-		subject, ok := s.subjectOf(sym)
-		if !ok {
-			continue
-		}
-		if s.set != nil && !s.inventory[key][subject.Package] {
-			continue
-		}
-		subjects = append(subjects, subject)
-	}
-	if len(subjects) == 0 && captureForTest == nil {
-		if err := checkSelectionMembers(s.ctx, selected.root, selected.env, selected.members, selected.selection.toolchain, s.sample); err != nil {
-			s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-			return nil, nil, false
-		}
-		return map[gofresh.Subject]gofresh.Fingerprint{}, map[gofresh.Subject]bool{}, true
-	}
-	engine, err := selectionEngine(s.ctx, selected, s.sample)
-	if err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-		return nil, nil, false
-	}
-	fps, unknownSubjects, err := narrowAndCapture(s.ctx, engine, subjects, nil)
-	if err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("%s %q: %v", phase, key, err))
-		return nil, nil, false
-	}
-	if captureForTest != nil {
-		fps = captureForTest(phase, fps)
-	}
-	return fps, unknownSubjects, true
-}
-
-// serveSelection checks one selection's records: the recorded callable
-// subjects viewed together, the ones the selected source no longer declares
-// narrowed away by gofresh's own refusal, the rest batch-checked alongside
-// recorded non-callable declarations governed by their source certificates.
-func (s *Served) serveSelection(endpoint *selectionEndpoint, key string, recs []resolutioncache.Record) {
-	selStart := time.Now()
-	servedBefore := len(s.served)
-	defer func() {
-		trace.Emit(s.ctx, trace.DomainResolve, "serve_selection", key,
-			trace.Int("records", len(recs)),
-			trace.Int("served", len(s.served)-servedBefore),
-			trace.Int64("duration_ms", time.Since(selStart).Milliseconds()),
-		)
-	}()
-	selected, err := endpoint.selected(key)
-	if err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-		return
-	}
-	probeSubjects := make([]gofresh.Subject, 0, len(recs))
-	callableSubjects := make([]gofresh.Subject, 0, len(recs))
-	var validNonCallables []resolutioncache.Record
-	bySubject := map[gofresh.Subject]resolutioncache.Record{}
-	seenSubject := map[gofresh.Subject]bool{}
-	for _, rec := range recs {
-		subject, ok := recordSubject(rec)
-		if !ok {
-			continue
-		}
-		// Records come newest first; a subject met twice (a partial
-		// install left two files of one identity) keeps its newest.
-		if seenSubject[subject] {
-			continue
-		}
-		seenSubject[subject] = true
-		if rec.Fingerprint == (gofresh.Fingerprint{}) {
-			certificate, hasCert := s.checkingCertificates[rec.Symbol]
-			if !hasCert {
-				s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
-				probeSubjects = append(probeSubjects, subject)
-				continue
-			}
-			if sourceCertificateMoved(rec.Certificate, certificate) {
-				s.reasons[rec.Symbol] = resolutionSourceDependencies.with("")
-				probeSubjects = append(probeSubjects, subject)
-				continue
-			}
-			validNonCallables = append(validNonCallables, rec)
-			continue
-		}
-		probeSubjects = append(probeSubjects, subject)
-		callableSubjects = append(callableSubjects, subject)
-		bySubject[subject] = rec
-	}
-	var current map[gofresh.Subject]gofresh.Fingerprint
-	var allGone map[gofresh.Subject]bool
-	if len(probeSubjects) == 0 {
-		if err := checkSelectionMembers(s.ctx, selected.root, selected.env, selected.members, selected.selection.toolchain, s.sample); err != nil {
-			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-			return
-		}
-		current = map[gofresh.Subject]gofresh.Fingerprint{}
-		allGone = map[gofresh.Subject]bool{}
-	} else {
-		engine, err := selectionEngine(s.ctx, selected, s.sample)
-		if err != nil {
-			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-			return
-		}
-		current, allGone, err = narrowAndCapture(s.ctx, engine, probeSubjects, func(subject gofresh.Subject) {
-			if rec, isCallable := bySubject[subject]; isCallable {
-				s.reasons[rec.Symbol] = resolutionNoLongerDeclared.with("")
-			}
-		})
-		if err != nil {
-			s.degraded = append(s.degraded, fmt.Sprintf("selection %q: %v", key, err))
-			return
-		}
-	}
-	s.checkedCaptures[key] = current
-	s.checkedUnknown[key] = allGone
-	for _, rec := range validNonCallables {
-		s.served[rec.Symbol] = rec
-	}
-	for _, subject := range callableSubjects {
-		if allGone[subject] {
-			continue
-		}
-		rec := bySubject[subject]
-		fp, captured := current[subject]
-		if !captured {
-			s.reasons[rec.Symbol] = resolutionNoCurrentCapture.with("")
-			continue
-		}
-		if why := closureMovedReason(rec.Fingerprint, fp); why != (resolutionReason{}) {
-			s.reasons[rec.Symbol] = why
-			continue
-		}
-		certificate, ok := s.checkingCertificates[rec.Symbol]
-		if !ok {
-			s.reasons[rec.Symbol] = resolutionNoCurrentCertificate.with("")
-			continue
-		}
-		if sourceCertificateMoved(rec.Certificate, certificate) {
-			s.reasons[rec.Symbol] = resolutionSourceDependencies.with("")
-			continue
-		}
-		s.served[rec.Symbol] = rec
-	}
-}
-
-// closureMovedReason names the native source component that differs between a
-// record and the current capture, or the zero resolutionReason when those
-// components agree. The complete certificate is judged separately. The native
-// comparison includes derivation, content and admission identities beside the
-// maximal (core) closure, the subject package's test-variant compartment —
-// the core excludes the package's own test-only declarations, and a witness's
-// class and serving refusal are functions of its own body, which lives exactly
-// there — then the toolchain and the build configuration. An empty
-// compartment digest on either side fails closed.
-func closureMovedReason(recorded, current gofresh.Fingerprint) resolutionReason {
-	switch {
-	case recorded.MaximalClosure != current.MaximalClosure:
-		return resolutionClosure
-	case recorded.TestVariantClosure == "" || recorded.TestVariantClosure != current.TestVariantClosure:
-		return resolutionTestVariants
-	case recorded.ClosureStrategy == "" || recorded.ClosureStrategy != current.ClosureStrategy:
-		return resolutionClosureDerivation
-	case recorded.ToolchainContent == "" || recorded.ToolchainContent != current.ToolchainContent:
-		return resolutionToolchainContent
-	case recorded.AdmissionPolicy == "" || recorded.AdmissionPolicy != current.AdmissionPolicy:
-		return resolutionAdmissionPolicy
-	case recorded.Guards.Toolchain != current.Guards.Toolchain:
-		return resolutionToolchain
-	case recorded.Guards.BuildConfig != current.Guards.BuildConfig:
-		return resolutionBuildConfig
-	}
-	return resolutionReason{}
-}
-
-func closureMoved(recorded, current gofresh.Fingerprint) string {
-	return closureMovedReason(recorded, current).String()
-}
-
-// Notices is the served path's account for a result: one line for the
-// served and typed counts, one per selection the path degraded, and
-// one per typed symbol naming why its record did not serve — advisory,
-// never a verdict input.
-func (s *Served) Notices() []string {
-	var out []string
-	// Both forms count the symbols that completed a typed resolution
-	// through the typed backend (a classified-only or unasked frontier symbol is
-	// not among them).
-	typed := 0
-	for _, a := range s.answers {
-		if a.resolved && a.err == nil {
-			typed++
-		}
-	}
-	out = append(out, fmt.Sprintf("resolution: %d served from records, %d resolved typed", len(s.served), typed))
-	for _, d := range s.degraded {
-		out = append(out, "resolution degraded to typed: "+d)
-	}
-	out = append(out, s.publishNotices()...)
-	keys := make([]string, 0, len(s.reasons))
-	for k := range s.reasons {
-		if a, ok := s.answers[k]; ok && a.resolved && a.err == nil {
-			keys = append(keys, k)
-		}
-	}
-	sort.Strings(keys)
-	for _, k := range keys {
-		out = append(out, fmt.Sprintf("resolution typed: %s: %s", k, s.reasons[k].String()))
-	}
-	return out
-}
-
-// Reasons names, per recorded symbol that resolved typed this run, why
-// its record did not serve.
-func (s *Served) Reasons() map[string]string {
-	out := make(map[string]string, len(s.reasons))
-	for k, v := range s.reasons {
-		out[k] = v.String()
-	}
-	return out
-}
-
-// recordSubject is the gofresh subject a record was captured for: the
-// symbol's rest beneath its owning package.
-func recordSubject(rec resolutioncache.Record) (gofresh.Subject, bool) {
-	rest, ok := strings.CutPrefix(rec.Symbol, rec.Package+".")
-	if !ok || rest == "" {
-		return gofresh.Subject{}, false
-	}
-	return gofresh.Subject{Package: rec.Package, Symbol: rest}, true
-}
-
-// Degraded names the serving-path faults this run degraded to typed
-// resolution — advisory, one line per selection.
-func (s *Served) Degraded() []string { return append([]string(nil), s.degraded...) }
-
-// ServedCount is the number of symbols answered from records this run.
-func (s *Served) ServedCount() int { return len(s.served) }
 
 func (s *Served) ensureBackend() (*Backend, error) {
 	if !s.backendLoaded {
@@ -1025,8 +439,6 @@ func (s *Served) SymbolPackage(symbol string) (string, error) {
 // takes files, read the tree as it is and consult no set.
 func (s *Served) admits(symbol string) bool {
 	if len(symbolPackageCandidates(symbol)) == 0 {
-		// No package to scope by: the typed backend answers not found for it
-		// under any load, never a narrowed frontier's not found.
 		return true
 	}
 	return s.set == nil || s.set[symbol]
@@ -1105,10 +517,6 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 		}
 		ask = append(ask, symbol)
 	}
-	// A symbol answered before answers from the memo — its refusal or
-	// the recorded absence of one — so a quiesced backend serves the
-	// classification without reloading; only the never-asked remainder
-	// reaches the typed backend.
 	var unasked []string
 	for _, symbol := range ask {
 		if why, asked := s.refusals[symbol]; asked {
@@ -1127,9 +535,6 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	// A witness classified typed is resolved typed too, so its record
-	// — refusal included — publishes at close and the next run's
-	// classification serves; the whole-tree form publishes nothing.
 	if !s.whole {
 		for _, symbol := range ask {
 			s.typed(symbol)
@@ -1148,9 +553,7 @@ func (s *Served) NeverServe(symbols []string) (map[string]string, error) {
 
 // Close publishes a record for every symbol the typed backend resolved
 // since the last quiesce — the typed answer, its class, its serving
-// refusal — and releases the typed backend. Records are the next run's
-// served set; a publication fault leaves the run's answers untouched. A
-// backend quiesced and asked nothing new since owes nothing here.
+// refusal — and releases the typed backend.
 func (s *Served) Close() error {
 	s.Quiesce()
 	return nil
@@ -1159,18 +562,17 @@ func (s *Served) Close() error {
 // Quiesce implements verify.Quiescer: the records the typed backend's
 // answers owe publish now and the typed backend is released, while
 // every answer this run gathered — resolutions, packages, classes,
-// serving refusals — stays to be served from memory; a symbol never
-// asked before costs a typed load again (ensureBackend), which the load
-// account witnesses, and the publish account accumulates across the
-// publishes. The witness run calls it right after its seeding
-// classification, so the loaded program is released before the run's
-// loads and executions (REQ-evidence-resolution-freshness-quiesce).
+// serving refusals — stays to be served from memory
+// (REQ-evidence-resolution-freshness-quiesce).
 func (s *Served) Quiesce() {
 	defer func() {
 		hadBackend := s.backend != nil
 		s.backend = nil
 		s.backendErr = nil
 		s.backendLoaded = false
+		s.initialEndpoint = nil
+		s.checkedViews = nil
+		s.openingViews = nil
 		s.reopened = true
 		if hadBackend {
 			debug.FreeOSMemory()
@@ -1206,228 +608,8 @@ func (s *Served) Quiesce() {
 	if len(s.pending) == 0 {
 		return
 	}
-	keys := make([]string, 0, len(s.pending))
-	for key := range s.pending {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		s.publishSelection(key, s.pending[key])
-	}
+	s.publishPending()
 	s.pending = map[string][]string{}
-}
-
-func (s *Served) publishSelection(key string, symbols []string) {
-	if s.ctx.Err() != nil {
-		return
-	}
-	pubStart := time.Now()
-	endpoint := newSelectionEndpoint(s.ctx, s.dir, s.sels)
-	closing, closingUnknown, ok := s.captureUnder(endpoint, key, symbols, "publish")
-	if !ok {
-		return
-	}
-	opening := s.opening[key]
-	openingUnknown := s.openingUnknown[key]
-	var certSymbols []string
-	for _, symbol := range symbols {
-		subject, ok := s.subjectOf(symbol)
-		if !ok {
-			continue
-		}
-		fp, captured := closing[subject]
-		if captured {
-			before, opened := opening[subject]
-			if !opened || closureMovedReason(before, fp) != (resolutionReason{}) {
-				continue
-			}
-		} else if !closingUnknown[subject] || !openingUnknown[subject] {
-			continue
-		}
-		if _, opened := s.openingCertificates[symbol]; !opened {
-			continue
-		}
-		certSymbols = append(certSymbols, symbol)
-	}
-	certificates, err := s.captureSourceCertificates(endpoint, certSymbols)
-	if err != nil {
-		s.degraded = append(s.degraded, "publish source certificate: "+err.Error())
-	}
-	var recs []resolutioncache.Record
-	var account publishAccount
-	for _, symbol := range symbols {
-		a := s.answers[symbol]
-		subject, ok := s.subjectOf(symbol)
-		if !ok {
-			continue
-		}
-		fp, captured := closing[subject]
-		before, opened := opening[subject]
-		var source gofresh.Fingerprint
-		switch {
-		case !captured && !closingUnknown[subject]:
-			account.uncaptured = append(account.uncaptured, symbol)
-			continue
-		case !opened && !openingUnknown[subject]:
-			account.unopened = append(account.unopened, symbol)
-			continue
-		case captured != opened:
-			account.moved = append(account.moved, symbol)
-			continue
-		case captured:
-			if closureMovedReason(before, fp) != (resolutionReason{}) {
-				account.moved = append(account.moved, symbol)
-				continue
-			}
-			source = resolutioncache.SourceTiers(before)
-			if !resolutioncache.Admits(source) {
-				account.refused = append(account.refused, symbol)
-				continue
-			}
-		}
-		certificate, opened := s.openingCertificates[symbol]
-		if !opened {
-			account.unopened = append(account.unopened, symbol)
-			continue
-		}
-		closedCertificate, captured := certificates[symbol]
-		if !captured {
-			account.uncaptured = append(account.uncaptured, symbol)
-			continue
-		}
-		if sourceCertificateMoved(certificate, closedCertificate) {
-			account.moved = append(account.moved, symbol)
-			continue
-		}
-		rec := resolutioncache.Record{
-			Selection: key, Symbol: symbol, Fingerprint: source,
-			Certificate: certificate,
-			Resolution:  resolutionWire(a.res), Shape: a.shape, Package: a.pkg,
-			WitnessClass: classWire(a.class), WitnessClassReason: a.reason,
-			NeverServe: s.refusals[symbol],
-		}
-		if !resolutioncache.AdmitsRecord(rec) {
-			account.refused = append(account.refused, symbol)
-			continue
-		}
-		recs = append(recs, rec)
-	}
-	if err := resolutioncache.InstallAll(s.dir, recs); err != nil {
-		s.degraded = append(s.degraded, fmt.Sprintf("publish %q: %v", key, err))
-	} else {
-		account.installed = len(recs)
-	}
-	if s.published == nil {
-		s.published = map[string]publishAccount{}
-	}
-	// A key publishes once per quiesce or close: the account is the
-	// sum, never the last publish's.
-	s.published[key] = account.summed(s.published[key])
-	trace.Emit(s.ctx, trace.DomainResolve, "publish_selection", key,
-		trace.Int("symbols", len(symbols)),
-		trace.Int("installed", account.installed),
-		trace.Int("moved", len(account.moved)),
-		trace.Int("unopened", len(account.unopened)),
-		trace.Int("uncaptured", len(account.uncaptured)),
-		trace.Int("refused", len(account.refused)),
-		trace.Int64("duration_ms", time.Since(pubStart).Milliseconds()),
-	)
-}
-
-// summed is this publish's account added to a prior publish's under the
-// same key: the installed counts added, every named list joined in
-// publish order — the one summing rule the account's rendering reads.
-func (a publishAccount) summed(prior publishAccount) publishAccount {
-	join := func(x, y []string) []string { return append(append([]string(nil), x...), y...) }
-	return publishAccount{
-		installed:  prior.installed + a.installed,
-		moved:      join(prior.moved, a.moved),
-		unopened:   join(prior.unopened, a.unopened),
-		uncaptured: join(prior.uncaptured, a.uncaptured),
-		refused:    join(prior.refused, a.refused),
-	}
-}
-
-// captureForTest, when set, rewrites a capture under its phase
-// ("opening" or "publish") before any reader sees it — a seam so a test
-// plants a subject either capture omitted and reads it named in the
-// account.
-var captureForTest func(phase string, capture map[gofresh.Subject]gofresh.Fingerprint) map[gofresh.Subject]gofresh.Fingerprint
-
-// publishedNamesBound caps the symbols one class of the account line
-// names; the remainder is counted.
-const publishedNamesBound = 8
-
-// namedClass renders one class of the account: its count, its cause,
-// and its symbols sorted, the first publishedNamesBound named and the
-// rest counted.
-func namedClass(symbols []string, cause string) string {
-	sorted := append([]string(nil), symbols...)
-	sort.Strings(sorted)
-	shown := sorted
-	if len(shown) > publishedNamesBound {
-		shown = shown[:publishedNamesBound]
-	}
-	line := fmt.Sprintf("%d %s: %s", len(sorted), cause, strings.Join(shown, ", "))
-	if len(sorted) > len(shown) {
-		line += fmt.Sprintf(" (+%d more)", len(sorted)-len(shown))
-	}
-	return line
-}
-
-// publishNotices renders the publish's account, one line per selection
-// key the publish ran under: the records installed, then each class of
-// symbol kept out with its symbols named (bounded).
-func (s *Served) publishNotices() []string {
-	keys := make([]string, 0, len(s.published))
-	for key := range s.published {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	var out []string
-	for _, key := range keys {
-		a := s.published[key]
-		line := fmt.Sprintf("resolution published under %q: %s", selectionWord(key), countWord(a.installed, "record"))
-		var skipped []string
-		if len(a.moved) > 0 {
-			skipped = append(skipped, namedClass(a.moved, "moved between the opening and closing capture"))
-		}
-		if len(a.unopened) > 0 {
-			skipped = append(skipped, namedClass(a.unopened, "without an opening capture"))
-		}
-		if len(a.uncaptured) > 0 {
-			skipped = append(skipped, namedClass(a.uncaptured, "without a closing capture"))
-		}
-		if len(skipped) > 0 {
-			line += "; skipped " + strings.Join(skipped, "; ")
-		}
-		if len(a.refused) > 0 {
-			line += "; " + namedClass(a.refused, "refused on their source tiers")
-		}
-		out = append(out, line)
-	}
-	return out
-}
-
-// countWord renders a count with its noun, pluralized.
-func countWord(n int, noun string) string {
-	if n == 1 {
-		return "1 " + noun
-	}
-	return fmt.Sprintf("%d %ss", n, noun)
-}
-
-// selectionWord spells a selection key for a person: the default
-// selection by name, a tagged one by its tags and toolchain.
-func selectionWord(key string) string {
-	if key == "default" {
-		return key
-	}
-	tags, toolchain, _ := strings.Cut(key, "\x00")
-	if toolchain == "" {
-		return tags
-	}
-	return tags + " " + toolchain
 }
 
 // mergeRefusals records, for every asked symbol, the typed backend's refusal or
@@ -1443,9 +625,7 @@ func mergeRefusals(into map[string]string, asked []string, refusals map[string]s
 }
 
 // witnessSymbols names every witness subject of the captured policy —
-// "package.Test" for each capture group's subjects — the symbols the
-// witness run classifies, so an operation's served backend is prepared
-// over them beside the bound symbols.
+// "package.Test" for each capture group's subjects.
 func witnessSymbols(ctx context.Context, pc *Capture) ([]string, error) {
 	d, err := pc.discover(ctx)
 	if err != nil {
@@ -1490,9 +670,7 @@ func OperationSymbols(ctx context.Context, store *records.Store, pc *Capture) ([
 
 // GCResolutions removes the corpus's resolution records no operation
 // can serve: a record whose symbol no binding names and no witness
-// subject of the captured policy carries (REQ-evidence-store-gc). A
-// policy the operation cannot capture keeps every witness record —
-// cost cleanup never guesses.
+// subject of the captured policy carries (REQ-evidence-store-gc).
 func GCResolutions(ctx context.Context, dir string, store *records.Store, pc *Capture) (removed, kept int, err error) {
 	symbols, err := OperationSymbols(ctx, store, pc)
 	if err != nil {

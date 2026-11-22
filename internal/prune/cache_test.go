@@ -72,11 +72,19 @@ func TestPruneGlobalCachePreservesTelemetryAndRepoState(t *testing.T) {
 		}); err != nil {
 			t.Fatal(err)
 		}
+		sourceFP := witnesscache.Fingerprint{
+			MaximalClosure:     strings.Repeat("a", 32),
+			TestVariantClosure: strings.Repeat("b", 32),
+			ClosureStrategy:    gofresh.ClosureStrategy,
+			ToolchainContent:   "tc",
+			AdmissionPolicy:    "ap",
+			Guards:             gofresh.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
+			ResultKind:         gofresh.SourceResult,
+		}
 		if err := resolutioncache.InstallAll(repo, []resolutioncache.Record{{
 			Selection:    "default",
 			Symbol:       "example.com/p.TestA",
-			Fingerprint:  resolutioncache.SourceTiers(fp),
-			Certificate:  resolutioncache.Certificate{Derivation: resolutioncache.Derivation, Inputs: strings.Repeat("e", 64)},
+			Views:        []resolutioncache.ViewEntry{{Selection: "default", Present: true, Fingerprint: sourceFP}},
 			Resolution:   "resolved",
 			Shape:        strings.Repeat("d", 32),
 			Package:      "example.com/p",

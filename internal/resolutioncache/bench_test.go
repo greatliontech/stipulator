@@ -18,14 +18,12 @@ func BenchmarkDecodeRecord(b *testing.B) {
 		ToolchainContent:   "toolchain-content",
 		AdmissionPolicy:    "admission-policy",
 		Guards:             gofresh.Guards{Toolchain: "go1.27.0", BuildConfig: strings.Repeat("c", 32)},
-		ResultKind:         gofresh.CodeResult,
+		ResultKind:         gofresh.SourceResult,
 	}
-	cert := Certificate{Derivation: Derivation, Inputs: strings.Repeat("e", 64)}
 	rec := Record{
 		Selection:    "default",
 		Symbol:       "example.com/p.F",
-		Fingerprint:  SourceTiers(fp),
-		Certificate:  cert,
+		Views:        []ViewEntry{{Selection: "default", Present: true, Fingerprint: fp}},
 		Resolution:   "resolved",
 		Shape:        strings.Repeat("d", 32),
 		Package:      "example.com/p",
@@ -39,8 +37,7 @@ func BenchmarkDecodeRecord(b *testing.B) {
 		Version:      version,
 		Selection:    rec.Selection,
 		Symbol:       rec.Symbol,
-		Fingerprint:  rec.Fingerprint,
-		Certificate:  rec.Certificate,
+		Views:        rec.Views,
 		Resolution:   rec.Resolution,
 		Shape:        rec.Shape,
 		Package:      rec.Package,

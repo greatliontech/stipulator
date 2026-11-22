@@ -1075,30 +1075,35 @@ binding's resolution — the resolution verdict, the shape hash, the owning
 package, the witness classification with its reason, and the serving
 refusal a random-seeded or unclassifiable witness carries — from a local
 record exactly when the complete dependencies of that source-derived fact
-hold. The native maximal closure, test-variant compartment, toolchain and
-build configuration are necessary components, not an exhaustive certificate.
-Classification and serving refusal also cover every contributing selected
-view, declaration precedence and classifier identity; a single-view fingerprint
-cannot certify a cross-view result. These are source-derived certificates
-under Gofresh's [evidence contract](https://github.com/greatliontech/gofresh/blob/main/docs/specs/evidence.md),
-not stored execution outcomes: they acquire no runtime receipt or historical
-subject-outcome support. Current re-derivation supplies a new certificate,
+hold across the policy's ordered selected views. Classification and serving
+refusal cover every contributing selected view, declaration precedence
+(including earlier-view declaration absence), and classifier identity; a
+single-view fingerprint cannot certify a cross-view result. Each selected
+view's entry is a native source-result judgment (`SourceResult`) under Gofresh's
+[evidence contract](https://github.com/greatliontech/gofresh/blob/main/docs/specs/evidence.md),
+not a stored execution outcome: it acquires no runtime receipt or historical
+subject-outcome support. Current re-derivation supplies a new record,
 never missing evidence about an earlier subject execution. Serving such a
-certificate retains its scope and authority, so REQ-evidence-promotion holds.
-The certificate identifies the ordered selected views, declaration-package
-presence and absence, their module/workspace context, selected source and
-export inputs of the owner and its dependencies (including helper bodies in
-other views), resolved analysis configuration, native toolchain-content and
-admission-policy identities, and the identified classifier implementation.
-The classifier identity includes the analyzer executable's content, sampled
-at startup, so a changed linked loader or frontend cannot inherit a prior
-derivation merely by retaining its version label. The executable supplied at
-startup is held unchanged while that identity is sampled; an unavailable
-identity permits typed resolution but no certificate reuse or publication.
-Certificate revalidation precedes consuming a served answer and follows the
-native source checks. A package-specific derivation failure affects only
-certificates depending on that package; a shared configuration failure affects
-every certificate depending on that configuration.
+record retains its scope and authority, so REQ-evidence-promotion holds.
+The ordered view sequence identifies the policy's selected views in precedence
+order, declaration-package boundaries, per-view symbol presence or absence, and
+for every declaring view — callable and non-callable declarations alike — its
+native source-result fingerprint: maximal closure (covering the owner and its
+transitive dependencies, module/workspace context, and test-imported helpers in
+every view), test-variant compartment, closure strategy, native toolchain-content
+and admission-policy identities, toolchain guard, and build-configuration guard
+(including resolved analysis configuration, `GOENV` content, and the identified
+classifier implementation). The classifier identity includes the analyzer
+executable's content, sampled at startup as an additional build-configuration
+input, so a changed linked loader or frontend cannot inherit a prior derivation
+merely by retaining its version label. The executable supplied at startup is
+held unchanged while that identity is sampled; an unavailable identity permits
+typed resolution but no record reuse or publication. Closing interval
+re-observation precedes consuming a served answer, revoking serving when source,
+module/workspace metadata, `GOENV`, or earlier-view declaration absence moves
+during the serving check. A package-specific derivation failure affects only
+symbols depending on that package; a shared configuration failure affects every
+symbol depending on that configuration.
 
 **REQ-evidence-resolution-freshness-typed-load** (behavior): A symbol without a
 valid record and a symbol the selected source no longer declares MUST resolve
@@ -1121,13 +1126,12 @@ scopes retain every policy selection, owned module, required dependency, test
 variant and native declaration judgment. Blanket pin, retargeting, impact,
 the declaration frontier and partitions retain their unscoped whole-tree form.
 A record is written only from a typed resolution, never from a served one,
-and only when the symbol's complete source certificate — and, for a callable
-subject, its native source-closure fingerprint — captured before the typed load
-opened equal those captured after the resolution (with a non-callable
-declaration — a type, variable, constant, or struct field — narrowed as an
-unknown subject by the native snapshot at both captures and governed by its
-source certificate and non-runnable serving refusal) — a dependency that moved
-between them prevents recording the answer.
+and only when the symbol's ordered multi-view presence and native source-result
+fingerprints — for callable and non-callable declarations (types, variables,
+constants, and struct fields) alike — captured before the typed load opened
+equal those captured after the resolution under unchanged package boundaries; a
+dependency, view presence, or package boundary that moved between them prevents
+recording the answer.
 Package boundaries are established from selected declaration inventories
 before the opening capture and typed load. If an inventory is unavailable,
 no source record serves or publishes from that operation; typed resolution
@@ -1167,58 +1171,42 @@ never a verdict input.
 cache MUST be a record store (REQ-evidence-record-store-layout) beside
 the witness cache, its identity parts the resolving build selection's
 key and the symbol, holding one record per identity — a record
-installed under another fingerprint or certificate supersedes the identity's prior
-one — each carrying one record object with integer `version`, the
-selection key, the symbol, the optional fingerprint (present for callable
-subjects with source-closure tiers only:
-maximal closure, test-variant compartment, the closure strategy that
-derived them, native toolchain content and admission policy, toolchain,
-build configuration, result kind — the
-publisher projects the capture onto exactly those parts, since a
-subject's purity assertion, observation proof, vouches, discharges,
-runtime inputs, or machine guard say nothing about where its
-declaration lives, and a record whose source tiers the store cannot
-serve is refused alone and named, never the batch it arrived in; omitted
-for non-callable declarations — types, variables, constants, and struct
-fields — which have no native callable subject and require `witnessClass`
-equal to `example` and a non-empty `neverServe` refusal alongside their
-complete `certificate`), and the served fields
-REQ-evidence-resolution-freshness names; when present, the fingerprint member is
-Gofresh's published record form, decoded and refused exactly as the
-witness record's (REQ-evidence-witness-cache-format-fingerprint). A record whose
-fingerprint carries any observation, purity, or runtime tier is
-ignored, because resolution observes nothing at run time. A classifier change
-that alters what a record proves changes its derivation identity, independently
-of the envelope version, so a record of an incompatible classifier never serves.
-Version 5 adds a required `certificate` object with exactly two string members:
-`derivation`, currently `stipulator/source-resolution@2`, and `inputs`, a
-64-character lowercase hexadecimal SHA-256 digest of the complete source
-dependency description. Version 6 admits non-callable declaration records
-whose `fingerprint` member is omitted and whose freshness is governed by
-`certificate`. Missing, unknown or malformed certificate support
-requires typed re-derivation. The filename's content digest covers both the
-native fingerprint (when present) and the certificate. These are derivation inputs, not
-runtime evidence or a receipt for an executed subject.
+installed under another view sequence supersedes the identity's prior
+one — each carrying one record object with integer `version` equal to `7`, the
+selection key, the symbol, the non-empty `views` array in policy precedence
+order, and the served fields REQ-evidence-resolution-freshness names. Each
+`views` element has string `selection`, required non-null boolean `present`,
+and optional `fingerprint`, present if and only if `present` is `true`. View
+selections within one record are unique, every view preceding the record's
+resolving `selection` has `present` equal to `false`, and the resolving
+`selection` appears in `views` with `present` equal to `true`. Every present
+view's `fingerprint` member is Gofresh's published `SourceResult` record form
+(maximal closure, test-variant compartment, closure strategy, native toolchain
+content and admission policy, toolchain guard, build-configuration guard, and
+source-result kind — callable and non-callable declarations alike), decoded and
+refused exactly as the witness record's
+(REQ-evidence-witness-cache-format-fingerprint). A record whose fingerprint
+carries any observation, purity, dynamic-state, applicability-extension,
+runtime, or measurement tier, or any result kind other than `SourceResult`, is
+ignored and refused on install; a record whose source tiers the store cannot
+serve is refused alone and named, never the batch it arrived in. The filename's
+content digest covers the ordered `views` array.
 The default selection key is `default`; every other key joins five
 components with NUL: the sorted, deduplicated effective tags joined by comma,
 the declared toolchain, and the module-mode flag (`-mod=mod`, `-mod=readonly`,
 `-mod=vendor`, or empty for the toolchain's default), followed by the
 tree-relative module root (empty for the tree root) and workspace mode
 (`off`, `workspace`, or empty for the tree's default). An untagged declared
-toolchain, module mode, module root or workspace mode is a distinct view. Version 1 records, derived
-without the complete selection set, are refused and re-derived rather than
-upgraded. Version 2 records also lack physical-source ownership in their
-classification and are refused. Version 3 records lack declared package
-boundary and module/workspace-context fidelity and are also refused; version
-4 carries the context-qualified key but lacks the complete cross-view
-certificate and is also refused; version 5 lacks typed non-callable
-declaration support and is also refused. Version 6 retains that key. This key identifies
-one view, not the complete certificate required by
+toolchain, module mode, module root or workspace mode is a distinct view.
+Prior record versions (`1` through `6`) fail closed to typed re-derivation
+rather than migration. This key identifies the first declaring view, while
+`views` carries the complete multi-view evidence required by
 REQ-evidence-resolution-freshness.
 The envelope is exactly one complete JSON object, permitting only JSON
 whitespace after its closing delimiter. Additional values or trailing garbage
 make that file alone malformed. Unknown, duplicated, case-aliased or null
-members also refuse the containing record. A served answer requires a declared
+members — in the outer envelope or inside any `views` element — also refuse the
+containing record. A served answer requires a declared
 owning-package prefix, a nonempty shape for a resolved declaration, and a
 recognized witness class. Loading and collection use the same whole-input
 admission; neither treats a valid prefix as a complete record. This outer

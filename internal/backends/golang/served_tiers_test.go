@@ -74,14 +74,22 @@ func TestServedIgnoresRecordsOfWithdrawnSelections(t *testing.T) {
 	var fp witnesscache.Fingerprint
 	for _, rec := range resolutioncache.Load(dir) {
 		if rec.Symbol == "example.com/served/p.F" {
-			fp = rec.Fingerprint
+			fp = rec.Views[0].Fingerprint
 			if rec.Selection != "default" {
 				t.Fatalf("F recorded under %q, want the default selection", rec.Selection)
 			}
 		}
 	}
 	// The same fingerprint under a selection the policy never declared.
-	withdrawn := resolutioncache.Record{Selection: "withdrawn\x00go1.0", Symbol: "example.com/served/p.H", Fingerprint: fp, Certificate: resolutioncache.Certificate{Derivation: resolutioncache.Derivation, Inputs: strings.Repeat("e", 64)}, Resolution: "resolved", Shape: "bogus", Package: "example.com/served/p", WitnessClass: "example"}
+	withdrawn := resolutioncache.Record{
+		Selection:    "withdrawn\x00go1.0",
+		Symbol:       "example.com/served/p.H",
+		Views:        []resolutioncache.ViewEntry{{Selection: "withdrawn\x00go1.0", Present: true, Fingerprint: fp}},
+		Resolution:   "resolved",
+		Shape:        "bogus",
+		Package:      "example.com/served/p",
+		WitnessClass: "example",
+	}
 	if err := resolutioncache.InstallAll(dir, []resolutioncache.Record{withdrawn}); err != nil {
 		t.Fatal(err)
 	}

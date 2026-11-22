@@ -73,7 +73,7 @@ func TestDeclarationsUseCompleteSelectedRootsAndNativeShapes(t *testing.T) {
 	if _, _, err := s.Resolve("example.com/decls/unrelated.Bad"); err == nil {
 		t.Fatal("out-of-set query admitted")
 	}
-	if s.ServedCount() != 0 || len(s.pending) != 0 || len(s.opening) != 0 {
+	if s.ServedCount() != 0 || len(s.pending) != 0 || len(s.openingViews) != 0 {
 		t.Fatal("declaration reading acquired verification evidence")
 	}
 	s.Close()
