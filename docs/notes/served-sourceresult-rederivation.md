@@ -39,3 +39,8 @@
    - Confirmed: wired `TestResolutionMultiViewServingMatchesPrecedenceOracle` directly to `precheckCandidateRecord` + `checkCandidateInView`, fixed `sel` extraction in `TestRecordsRefuseWhatTheStoreDoesNotServe`, added per-record `skipRefused` test in `TestServedPublishesSubjectsWithNonSourceTiers`, and added `sourceClassifierError != nil` test in `TestResolutionMultiViewBindsClassifierImage`.
 7. **[Nit | Introduced — Fixed] Vestigial comments in `served_test.go` and `derive.go` LOC count in `golang-backend-file-splits-and-merge-dedup.md`**:
    - Confirmed: updated all comments and line counts.
+
+## Round 2 Adversarial Review Dispositions (`c3db0050-b46c-4354-85b3-679004a23466`)
+
+1. **[Low | Introduced — Fixed] `publishPending` checking `openCap` (`skipUnopened`) before `closeCap` (`skipUncaptured`) (`served_capture.go`, `served_test.go`, `multiview_test.go`)**:
+   - Confirmed: ordered `openCap` check before `closeCap` in `publishPending`'s per-view loop so empty-set serving backends (`TestEmptySetServingFormAdmitsItsWholeTree`) and failed-opening scoped backends (`TestResolutionMultiViewBindsClassifierImage`) report `"without an opening capture"` rather than `"without a closing capture"`.
