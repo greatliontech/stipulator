@@ -1181,3 +1181,68 @@ func TestInstallBatchIsolatesPerRecordFailuresAndDeduplicatesLedgers(t *testing.
 		t.Fatal("shared compartment ledger missing after InstallBatch")
 	}
 }
+
+func TestObservationFreePureRecordLoadsAndHalfEmptyRefuses(t *testing.T) {
+	stipulate.Covers(t, "REQ-evidence-witness-cache-format-record-keys", "REQ-evidence-witness-cache-format-validation")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+	pureRec := Record{
+		Group:    "6772702d64696765",
+		Package:  "example.com/pure",
+		Test:     "TestPure",
+		Outcomes: map[string]string{"example.com/pure.TestPure": "passed"},
+		Fingerprint: Fingerprint{
+			MaximalClosure:       strings.Repeat("a", 32),
+			TestVariantClosure:   strings.Repeat("b", 32),
+			ClosureStrategy:      gofresh.ClosureStrategy,
+			DynamicStateStrategy: gofresh.DynamicStateStrategy,
+			ToolchainContent:     "tc",
+			AdmissionPolicy:      "ap",
+			Guards:               gofresh.Guards{Toolchain: "go1.27.4", BuildConfig: strings.Repeat("c", 32)},
+			ResultKind:           gofresh.CodeResult,
+		},
+	}
+	if err := Install(t.Context(), dir, pureRec); err != nil {
+		t.Fatalf("Install(pureRec): %v", err)
+	}
+	loaded := Load(t.Context(), dir)
+	if len(loaded.Records) != 1 || loaded.Account != nil || loaded.Records[0].Fingerprint.RuntimeInputs != "" || loaded.Records[0].Fingerprint.RuntimeDigest != "" {
+		t.Fatalf("Load(pureRec) = %+v, want 1 clean observation-free record", loaded)
+	}
+
+	// Half-empty runtime tiers and observation proofs without runtime manifests must refuse.
+	missingManifest := pureRec
+	missingManifest.Test = "TestMissingManifest"
+	missingManifest.Outcomes = map[string]string{"example.com/pure.TestMissingManifest": "passed"}
+	missingManifest.Fingerprint.RuntimeDigest = strings.Repeat("d", 32)
+	if err := Install(t.Context(), dir, missingManifest); err != nil {
+		t.Fatal(err)
+	}
+
+	missingDigest := pureRec
+	missingDigest.Test = "TestMissingDigest"
+	missingDigest.Outcomes = map[string]string{"example.com/pure.TestMissingDigest": "passed"}
+	missingDigest.Fingerprint.RuntimeInputs = "eyJ2Ijo0fQ"
+	if err := Install(t.Context(), dir, missingDigest); err != nil {
+		t.Fatal(err)
+	}
+
+	proofWithoutManifest := pureRec
+	proofWithoutManifest.Test = "TestProofWithoutManifest"
+	proofWithoutManifest.Outcomes = map[string]string{"example.com/pure.TestProofWithoutManifest": "passed"}
+	proofWithoutManifest.Fingerprint.ObservationAssertion = "caller assertion"
+	proofWithoutManifest.Fingerprint.ObservationProof = gofresh.ObservationProof{
+		Strategy:   gofresh.ObservationRTA,
+		Subject:    gofresh.Subject{Package: "example.com/pure", Symbol: "TestProofWithoutManifest"},
+		Observable: true,
+		Evidence:   strings.Repeat("e", 32),
+	}
+	if err := Install(t.Context(), dir, proofWithoutManifest); err != nil {
+		t.Fatal(err)
+	}
+
+	after := Load(t.Context(), dir)
+	if len(after.Records) != 1 || after.Records[0].Test != "TestPure" || after.Account == nil || len(after.Account.GetRefusals()) != 3 {
+		t.Fatalf("Load after malformed runtime/proof variants = (%d records, account=%+v), want only TestPure + 3 refusals", len(after.Records), after.Account)
+	}
+}

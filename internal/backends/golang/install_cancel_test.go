@@ -78,19 +78,19 @@ func TestPublicationPassesCancellationToStoreAcquisition(t *testing.T) {
 // it establishes neither a completed process nor operation-outcome support.
 func emptyWitnessInputs(t *testing.T, dir string) gofresh.RuntimeState {
 	t.Helper()
-	observation, err := gofresh.MergeObservations(dir, nil)
+	const emptyV4Manifest = "eyJ2Ijo0fQ"
+	state, err := gofresh.CurrentRuntimeInputs(t.Context(), emptyV4Manifest, dir, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return observation.State
+	return state
 }
 
-func publicationRecord(t *testing.T, dir, test string) witnesscache.Record {
+func publicationRecord(t *testing.T, _ string, test string) witnesscache.Record {
 	t.Helper()
-	inputs := emptyWitnessInputs(t, dir)
 	return witnesscache.Record{Group: "group", Package: "example.com/p", Test: test, Outcomes: map[string]string{"example.com/p." + test: "passed"}, Fingerprint: gofresh.Fingerprint{
 		MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
-		Guards: gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
+		Guards: gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult,
 	}}
 }
 

@@ -42,10 +42,6 @@ func TestPruneGlobalCachePreservesTelemetryAndRepoState(t *testing.T) {
 	}
 
 	seedRepo := func(repo string) {
-		inputs, err := gofresh.MergeObservations(repo, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
 		fp := witnesscache.Fingerprint{
 			MaximalClosure:       strings.Repeat("a", 32),
 			TestVariantClosure:   strings.Repeat("b", 32),
@@ -54,8 +50,6 @@ func TestPruneGlobalCachePreservesTelemetryAndRepoState(t *testing.T) {
 			ToolchainContent:     "tc",
 			AdmissionPolicy:      "ap",
 			Guards:               gofresh.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
-			RuntimeInputs:        inputs.Manifest,
-			RuntimeDigest:        inputs.Digest,
 			InertTestVariantApplicability: gofresh.InertTestVariantApplicability{
 				Strategy:           gofresh.InertTestVariantExtension,
 				TestVariantClosure: strings.Repeat("b", 32),

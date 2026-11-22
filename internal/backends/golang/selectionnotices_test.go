@@ -49,7 +49,8 @@ func TestSelectionNoticesAttributeUnwalkedSelections(t *testing.T) {
 		Directory:   dir,
 		Environment: ambient,
 		Flags:       selectionBuildFlags(true, nil),
-	}, ownedRunner.PrepareCommand); err != nil || sel.SelectionNotice != "" {
+		Inputs:      []string{},
+	}, nil, ownedRunner.PrepareCommand); err != nil || sel.SelectionNotice != "" {
 		t.Skipf("the running toolchain's race selection is not admitted here (%v, %q); the version canary covers this", err, sel.SelectionNotice)
 	}
 	tagged := &stipulatorv1.GoInvocationConfig{}
@@ -279,13 +280,11 @@ func TestNormalizationRefusesWhenTheRunEndsMidAudit(t *testing.T) {
 	}
 }
 
-// Normalization queries the environment exactly once: the audit's
-// reader is primed with the snapshot effectiveGoEnv took, so the
-// verdict costs no second `go env` — measured warm, after a
-// normalization of the same selection listed its scope into gofresh's
-// on-disk memo under this test's cache home, so the listing spawn is
-// the memo's and the environment query stands alone
-// (REQ-check-derivation).
+// Every normalization — witness-eligible or plain — queries `go env` exactly
+// once (`effectiveGoEnv`), warm witness-eligible normalization serves gofresh's
+// on-disk listing memo with zero `go list` spawns, and readers of a captured
+// policy (`SelectionNotices`) pay zero toolchain queries
+// (REQ-check-derivation, REQ-check-policy-notices).
 //
 // Deliberately not //gofresh:pure: normalization shells the go toolchain.
 func TestNormalizationQueriesTheEnvironmentOnce(t *testing.T) {
@@ -294,6 +293,18 @@ func TestNormalizationQueriesTheEnvironmentOnce(t *testing.T) {
 	dir := discoverFixture(t)
 	ctx := context.Background()
 	c := countSpawns(t)
+
+	plainCfg := &stipulatorv1.GoInvocationConfig{}
+	plainCfg.SetPackages([]string{"./..."})
+	plainInv := goInvocation("plain", plainCfg)
+	c.reset()
+	if _, err := NormalizeInvocation(ctx, dir, plainInv); err != nil {
+		t.Fatal(err)
+	}
+	if got := c.snapshot(); got.env != 1 || got.list != 0 || got.test != 0 || got.child != 0 {
+		t.Fatalf("non-witness normalization spawned %+v, want exactly one environment query and no listing", got)
+	}
+
 	cfg := &stipulatorv1.GoInvocationConfig{}
 	cfg.SetPackages([]string{"./..."})
 	cfg.SetRace(true)
@@ -306,7 +317,17 @@ func TestNormalizationQueriesTheEnvironmentOnce(t *testing.T) {
 	if _, err := NormalizeInvocation(ctx, dir, inv); err != nil {
 		t.Fatal(err)
 	}
-	if got := c.snapshot(); got.env != 1 || got.list != 0 {
-		t.Fatalf("a warm normalization spawned %+v, want exactly one environment query and no listing", got)
+	if got := c.snapshot(); got.env != 1 || got.list != 0 || got.test != 0 || got.child != 0 {
+		t.Fatalf("warm witness normalization spawned %+v, want exactly one environment query and warm listing memo (list=0)", got)
+	}
+
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{inv})
+	pc := mustCapture(t, ctx, dir, pol)
+	c.reset()
+	_ = SelectionNotices(pc)
+	_ = SelectionNotices(pc)
+	if got := c.snapshot(); got.env != 0 || got.list != 0 || got.test != 0 || got.child != 0 {
+		t.Fatalf("SelectionNotices over captured policy spawned %+v, want zero toolchain queries", got)
 	}
 }

@@ -184,6 +184,7 @@ func TestExplainEntryShapesItsRefusals(t *testing.T) {
 		{spelling: mcp, refusal: "explain: pass reason to parse, witness for a witness's seeding, or package and symbol"},
 		{reason: "nothing here", spelling: cli, refusal: "explain: no culprit parsed from the reason; pass --package and --symbol, or --witness for a seeding reason"},
 		{reason: "github.com/x/reg: github.com/x/reg.Registry escapes writable", spelling: cli, want: ExplainRequest{Package: "github.com/x/reg", Symbol: "Registry"}},
+		{reason: "summary:\ngithub.com/x/reg: github.com/x/reg.Registry\n(+2 more not shown)", spelling: cli, want: ExplainRequest{Package: "github.com/x/reg", Symbol: "Registry"}},
 		{reason: "ignored", pkg: "example.com/p", sym: "V", spelling: cli, want: ExplainRequest{Package: "example.com/p", Symbol: "V"}},
 		// The witness form travels alone.
 		{witness: "example.com/p.TestProp", spelling: cli, want: ExplainRequest{Witness: "example.com/p.TestProp"}},
@@ -194,8 +195,10 @@ func TestExplainEntryShapesItsRefusals(t *testing.T) {
 		{reason: seededThroughReason("example.com/p.run").String(), spelling: mcp, refusal: "explain: a seeding reason derives from the witness's own body; pass witness naming the witness the reason stood beside"},
 		{reason: seededRefusal(errors.New("call of x in the bound body resolves to no declaration")).String(), spelling: cli, refusal: "explain: a seeding reason derives from the witness's own body; pass --witness naming the witness the reason stood beside"},
 		// A freshness-library reason: the culprit from its tail, else
-		// its own attribution.
+		// its own attribution (including budget-cut reasons whose culprit reachability was unjudged).
 		{reason: reasonPostRun.with("package graph shares mutated dynamic state: github.com/x/b: github.com/x/b.thresholds registers function values outside the environment-free audit").String(), spelling: cli, want: ExplainRequest{Package: "github.com/x/b", Symbol: "thresholds"}},
+		{reason: reasonPostRun.with("package graph shares mutated dynamic state: github.com/x/b: github.com/x/b.thresholds is mutated (reachability unjudged: analysis budget 10ms exhausted)").String(), spelling: cli, want: ExplainRequest{Attribution: reasonPostRun.with("package graph shares mutated dynamic state: github.com/x/b: github.com/x/b.thresholds is mutated (reachability unjudged: analysis budget 10ms exhausted)").String()}},
+		{reason: "github.com/x/b: github.com/x/b.thresholds is mutated (reachability unjudged: analysis budget 10ms exhausted)", spelling: cli, refusal: "explain: no culprit parsed from the reason; pass --package and --symbol, or --witness for a seeding reason"},
 		{reason: reasonPostRun.with("reaches crypto/rand.Read (entropy)").String(), spelling: cli, want: ExplainRequest{Attribution: reasonPostRun.with("reaches crypto/rand.Read (entropy)").String()}},
 		{reason: reasonObservationSeal.with("github.com/x/b: github.com/x/b.state escapes writable").String(), spelling: cli, want: ExplainRequest{Package: "github.com/x/b", Symbol: "state"}},
 		// A reason that is its own attribution answers as such.

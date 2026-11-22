@@ -3,6 +3,7 @@ package golang
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/gotool"
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
@@ -193,68 +195,128 @@ func FuzzGoExecuteTestlogIngestion(f *testing.F) {
 	f.Add([]byte("# test log\nopen fixture.txt\n"), true)
 	f.Add([]byte(""), true)
 
+	baseDir := f.TempDir()
+	pkgDir := filepath.Join(baseDir, "p")
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		f.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(baseDir, "go.mod"), []byte("module example.com/fuzzingest\n\ngo 1.26\n"), 0o644); err != nil {
+		f.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgDir, "p_test.go"), []byte("package p\n\nimport \"testing\"\n\nfunc TestP(*testing.T) {}\n"), 0o644); err != nil {
+		f.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgDir, "fixture.txt"), []byte("recorded"), 0o644); err != nil {
+		f.Fatal(err)
+	}
+	buildEnv, err := gotool.NormalizeEnv(os.Environ())
+	if err != nil {
+		f.Fatal(err)
+	}
+	sess, err := gofresh.NewSession(context.Background(), gofresh.BuildDescription{
+		Directory:   baseDir,
+		Environment: buildEnv,
+		Inputs:      []string{},
+	}, gofresh.SessionPolicy{
+		EvidenceRoot:   baseDir,
+		Execution:      gofresh.PackageExecution,
+		PrepareCommand: ownedRunner.PrepareCommand,
+	})
+	if err != nil {
+		f.Fatal(err)
+	}
+	subject := gofresh.Subject{Package: "example.com/fuzzingest/p", Symbol: "TestP"}
+	snap, err := sess.Snapshot(context.Background(), []gofresh.Subject{subject}, gofresh.CodeResult)
+	if err != nil {
+		f.Fatal(err)
+	}
+	built, err := snap.BindBuilt("example.com/fuzzingest/p", "fuzz-bin")
+	if err != nil {
+		f.Fatal(err)
+	}
+	runEnv := gotool.SetEnv(gotool.SetEnv(buildEnv, "HOME", "/nonexistent"), "PWD", pkgDir)
+	rb, err := snap.BindRuntime(context.Background(), gofresh.RuntimeDescription{Directory: pkgDir, Environment: runEnv})
+	if err != nil {
+		f.Fatal(err)
+	}
+	movedPath := filepath.Join(pkgDir, "moved.txt")
+
 	f.Fuzz(func(t *testing.T, log []byte, mutate bool) {
 		stipulate.Covers(t, "REQ-policy-attribution", "REQ-evidence-witness-freshness-bracket")
-		dir := t.TempDir()
-		pkgDir := filepath.Join(dir, "p")
-		if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		_ = os.Remove(movedPath)
+		t.Cleanup(func() { _ = os.Remove(movedPath) })
+
+		logDir := t.TempDir()
+		logPath1 := filepath.Join(logDir, "log1.txt")
+		logPath2 := filepath.Join(logDir, "log2.txt")
+		if err := os.WriteFile(logPath1, log, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(pkgDir, "fixture.txt"), []byte("recorded"), 0o644); err != nil {
+		if err := os.WriteFile(logPath2, log, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		// One bracket per iteration, captured over the package root before
-		// any mutation, shared by both ingestions so determinism is judged
-		// against one capture — exactly the executor's pre-spawn shape.
-		bracket, err := gofresh.CaptureBracket(context.Background(), dir, []string{"p"})
-		if err != nil {
-			t.Fatal(err)
+
+		openUnit := func(logPath, id string) (*gofresh.Unit, gofresh.Contribution) {
+			t.Helper()
+			u, err := rb.BeginIdentity(subject)
+			if err != nil {
+				t.Fatal(err)
+			}
+			contrib, err := u.Register(context.Background(), built, gofresh.ProcessDescription{
+				Identity:      id,
+				Capture:       logPath,
+				BracketPaths:  []string{"p"},
+				ExcludedPaths: []string{".", ".git"},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return u, contrib
 		}
+		u1, c1 := openUnit(logPath1, "fuzz#1:example.com/p")
+		defer u1.Abort()
+		u2, c2 := openUnit(logPath2, "fuzz#1:example.com/p")
+		defer u2.Abort()
+
 		if mutate {
 			// The mutation lands inside the capture-to-ingest window and
 			// persists: the bracket must move, whatever the log carries.
-			if err := os.WriteFile(filepath.Join(pkgDir, "moved.txt"), []byte("moved"), 0o644); err != nil {
+			if err := os.WriteFile(movedPath, []byte("moved"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		}
-		env := []string{"HOME=/nonexistent", "PATH=/usr/bin"}
-		ingest := func() (gofresh.Observation, error) {
-			return gofresh.FromTestLog(log, dir, pkgDir, env,
-				gofresh.WithCompletedProcess("fuzz#1:example.com/p"),
-				gofresh.WithBracket(bracket),
-				gofresh.WithExcludedPaths(".", ".git"))
+
+		if err := u1.Submit(c1, gofresh.Terminal{Kind: gofresh.NormalCompletion}); err != nil {
+			t.Fatal(err)
 		}
-		o1, err1 := ingest()
-		o2, err2 := ingest()
+		if err := u2.Submit(c2, gofresh.Terminal{Kind: gofresh.NormalCompletion}); err != nil {
+			t.Fatal(err)
+		}
+		_, err1 := u1.Close(context.Background())
+		_, err2 := u2.Close(context.Background())
 		if (err1 == nil) != (err2 == nil) {
 			t.Fatalf("nondeterministic ingestion: %v vs %v", err1, err2)
 		}
-		if err1 != nil {
-			// The executor maps this to an incomplete observation whose
-			// reason carries the error — it must say something.
+		a1, _ := u1.Account()
+		a2, _ := u2.Account()
+		var spanErr1 *gofresh.RuntimeInputSpanError
+		if err1 != nil && !errors.As(err1, &spanErr1) {
 			if err1.Error() == "" {
 				t.Fatal("ingestion refused silently")
 			}
 			return
 		}
-		s1, err := gofresh.CompletedObservationState(o1)
-		if err != nil {
-			t.Fatalf("accepted ingestion is not sealed completed evidence: %v", err)
+		if a1.Inputs.Manifest == "" || a2.Inputs.Manifest == "" {
+			t.Fatalf("accepted ingestion missing finalized manifest: %+v / %+v", a1, a2)
 		}
-		s2, err := gofresh.CompletedObservationState(o2)
-		if err != nil {
-			t.Fatal(err)
-		}
-		// The manifest is a pure function of the bytes, environment, and
-		// bracket; only content digests may move between calls.
-		if s1.Manifest != s2.Manifest {
+		if a1.Inputs.Manifest != a2.Inputs.Manifest {
 			t.Fatal("nondeterministic manifest from identical testlog bytes")
 		}
-		if _, err := gofresh.ModuleRelRuntimeInputPaths(s1.Manifest); err != nil {
+		if _, err := gofresh.ModuleRelRuntimeInputPaths(a1.Inputs.Manifest); err != nil {
 			t.Fatalf("accepted manifest does not decode: %v", err)
 		}
-		if mutate && !s1.Unverifiable {
-			t.Fatal("a bracketed root mutated inside the capture-to-ingest window sealed verifiable; a moved bracket must never bind")
+		if mutate && !a1.Inputs.Unverifiable && !a1.Inputs.BracketMoved {
+			t.Fatalf("a bracketed root mutated inside the capture-to-ingest window closed verifiable: err=%v acct=%+v", err1, a1)
 		}
 	})
 }

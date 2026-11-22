@@ -34,16 +34,12 @@ func New(t *testing.T, resolution bool) Store {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	f := Store{Root: t.TempDir(), resolution: resolution}
 	// Observation-free data exercises storage, not producing-process support.
-	inputs, err := gofresh.MergeObservations(f.Root, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	fp := gofresh.Fingerprint{
 		MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32),
 		ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
 		ToolchainContent: "content", AdmissionPolicy: "admission",
-		Guards:        gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)},
-		RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
+		Guards:     gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)},
+		ResultKind: gofresh.CodeResult,
 	}
 	const pkg = "example.com/prunegc"
 	var bindings string

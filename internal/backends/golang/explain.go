@@ -3,6 +3,7 @@ package golang
 import (
 	"context"
 	"fmt"
+	"go/token"
 	"sort"
 	"strings"
 
@@ -51,8 +52,21 @@ func ExplainDynamicState(ctx context.Context, pc *Capture, pkgPath, varName stri
 // can explain a verdict from the reason text verbatim, on the CLI and
 // the MCP alike.
 func CulpritFromReason(reason string) (pkgPath, symbol string, ok bool) {
-	c, ok := gofresh.CulpritFromReason(reason)
-	return c.Package, c.Symbol, ok
+	if strings.Contains(reason, " (reachability unjudged: ") {
+		return "", "", false
+	}
+	fields := strings.Fields(reason)
+	for i := 0; i+1 < len(fields); i++ {
+		pkg, hasColon := strings.CutSuffix(fields[i], ":")
+		if !hasColon || pkg == "" || strings.IndexAny(pkg, " \t\r\n:") >= 0 {
+			continue
+		}
+		sym, hasPrefix := strings.CutPrefix(fields[i+1], pkg+".")
+		if hasPrefix && token.IsIdentifier(sym) {
+			return pkg, sym, true
+		}
+	}
+	return "", "", false
 }
 
 // ExplainRequest is what a surface's explain request settled to: a

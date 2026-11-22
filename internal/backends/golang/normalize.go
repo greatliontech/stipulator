@@ -138,8 +138,8 @@ type NormalizedInvocation struct {
 	LinkerAssignments     []string
 	DeclaredLinkerStrings []string
 	InputFiles            []selectedInputFile
-	// inputRoots memoizes classification-root probes for this judged invocation.
-	inputRoots             *gofresh.InputRoots
+	// inputRoots memoizes classification-root probes for input-file eligibility.
+	inputRoots             *gofresh.FileInputRoots
 	extractedLinkerStrings []*stipulatorv1.GoLinkerString
 	// Env is the complete normalized child-process environment every
 	// subprocess of this invocation runs under: inherited minus denials,
@@ -374,30 +374,6 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		return nil, fmt.Errorf("invocation %q: ambient control: %w", inv.GetName(), err)
 	}
 	n.extractedLinkerStrings = extractedLinker
-	// A witness-eligible invocation's toolchain-source verdict (gofresh's
-	// content-keyed audit of the selection's standard-library surface),
-	// resolved once here under the invocation's own environment through
-	// the snapshot just taken — no second environment query. The listing
-	// it takes is memoized on disk under the cache home by its scope
-	// (version, explicit flags, the snapshot's identity), which the
-	// engine's own construction does not share (GOENV off, the toolchain
-	// pinned, the tree root, its mode and pgo flags), so each scope pays
-	// a cold listing once per cache home; a non-witness invocation builds
-	// no engine and is never audited. The one fault left to the
-	// resolution past a taken snapshot is the run's own end, which
-	// refuses normalization as any spawn would.
-	if n.WitnessEligible() {
-		sel, err := gofresh.ResolveToolchainSelection(ctx, gofresh.BuildDescription{
-			Directory:   n.Dir,
-			Environment: env,
-			Flags:       selectionBuildFlags(cfg.GetRace(), cfg.GetTags()),
-			GoEnv:       snapshot.Values(),
-		}, ownedRunner.PrepareCommand)
-		if err != nil {
-			return nil, fmt.Errorf("invocation %q: toolchain-source audit: %w", inv.GetName(), err)
-		}
-		n.SelectionNotice = sel.SelectionNotice
-	}
 	n.Toolchain, n.GOOS, n.GOARCH, n.GOFLAGS = version, goos, goarch, goflags
 	n.GOEXPERIMENT = goexperiment
 	n.CgoEnabled = cgo == "1"
@@ -438,6 +414,28 @@ func NormalizeInvocation(ctx context.Context, dir string, inv *stipulatorv1.Poli
 		env = gotool.SetEnv(env, "GOCACHE", gocache)
 	}
 	n.Env = env
+	// A witness-eligible invocation's toolchain-source verdict (gofresh's
+	// content-keyed audit of the selection's standard-library surface),
+	// resolved once here after pinning the invocation's own environment and
+	// reusing normalization's single `go env` snapshot so readers of the
+	// capture pay zero toolchain queries (REQ-check-derivation,
+	// REQ-check-policy-notices). The listing it takes is memoized on disk
+	// under the cache home by its scope; a non-witness invocation builds no
+	// engine and is never audited.
+	if n.WitnessEligible() {
+		primedValues := snapshot.Values()
+		primedValues["GOFLAGS"] = goflags
+		sel, err := gofresh.ResolveToolchainSelection(ctx, gofresh.BuildDescription{
+			Directory:   n.Dir,
+			Environment: n.Env,
+			Flags:       selectionBuildFlags(cfg.GetRace(), cfg.GetTags()),
+			Inputs:      []string{},
+		}, primedValues, ownedRunner.PrepareCommand)
+		if err != nil {
+			return nil, fmt.Errorf("invocation %q: toolchain-source audit: %w", inv.GetName(), err)
+		}
+		n.SelectionNotice = sel.SelectionNotice
+	}
 	// Record-only grammar was accepted at entry. Only absolute exclusion
 	// placement needs the resolved verification tree.
 	n.BracketPaths = append(n.BracketPaths, cfg.GetBracketPaths()...)

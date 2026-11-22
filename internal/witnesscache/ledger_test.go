@@ -17,11 +17,12 @@ import (
 // observation or operation-outcome support.
 func emptyRuntimeInputs(t *testing.T) gofresh.RuntimeState {
 	t.Helper()
-	observation, err := gofresh.MergeObservations(t.TempDir(), nil)
+	const emptyV4Manifest = "eyJ2Ijo0fQ"
+	state, err := gofresh.CurrentRuntimeInputs(t.Context(), emptyV4Manifest, t.TempDir(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return observation.State
+	return state
 }
 
 func ledgerFingerprint(t *testing.T, compartment string) Fingerprint {

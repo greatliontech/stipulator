@@ -15,13 +15,19 @@ import (
 	"github.com/greatliontech/stipulator/stipulate"
 )
 
+func setReadingsHook(t *testing.T, fn readingsFunc) {
+	t.Helper()
+	prior := readingsHook.Load()
+	readingsHook.Store(&fn)
+	t.Cleanup(func() { readingsHook.Store(prior) })
+}
+
 // injectReadings installs synthetic host and pass readings for the
 // admission for the test's life.
 func injectReadings(t *testing.T, host func() (resident.Memory, bool), sample func() (resident.Set, bool)) {
 	t.Helper()
 	freshGate(t)
-	prior := readingsHook
-	readingsHook = func() (resident.Reading, bool) {
+	setReadingsHook(t, func() (resident.Reading, bool) {
 		set, ok := sample()
 		if !ok {
 			return resident.Reading{}, false
@@ -31,17 +37,35 @@ func injectReadings(t *testing.T, host func() (resident.Memory, bool), sample fu
 			return resident.Reading{}, false
 		}
 		return resident.Reading{Set: set, Host: m}, true
-	}
-	t.Cleanup(func() { readingsHook = prior })
+	})
 }
 
 // injectReading installs one synthetic reading, trees included.
 func injectReading(t *testing.T, read func() resident.Reading) {
 	t.Helper()
 	freshGate(t)
-	prior := readingsHook
-	readingsHook = func() (resident.Reading, bool) { return read(), true }
-	t.Cleanup(func() { readingsHook = prior })
+	setReadingsHook(t, func() (resident.Reading, bool) { return read(), true })
+}
+
+func waitGateParked(t *testing.T, want int) {
+	t.Helper()
+	g := theHostGate
+	var timedOut atomic.Bool
+	timer := time.AfterFunc(5*time.Second, func() {
+		timedOut.Store(true)
+		g.mu.Lock()
+		g.parked.Broadcast()
+		g.mu.Unlock()
+	})
+	defer timer.Stop()
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	for g.waiters < want {
+		if timedOut.Load() {
+			t.Fatalf("timed out waiting for %d parked gate waiter(s); got %d", want, g.waiters)
+		}
+		g.parked.Wait()
+	}
 }
 
 // freshGate gives the test its own host gate: a unit pin's admissions
@@ -1187,7 +1211,7 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 	fourth := newAdmission(ctx2, 8)
 	t.Cleanup(func() { fourth.leave() })
 	fourthAsk := admitAsync(fourth)
-	time.Sleep(50 * time.Millisecond)
+	waitGateParked(t, 1)
 	cancel2()
 	select {
 	case got := <-fourthAsk:
@@ -1399,20 +1423,31 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 			t.Fatalf("theta's package %d was refused: %q", i, refusal)
 		}
 	}
-	iota, kappa := newAdmission(context.Background(), 8), newAdmission(context.Background(), 8)
+	ctxBurst, cancelBurst := context.WithCancel(context.Background())
+	defer cancelBurst()
+	iota, kappa := newAdmission(ctxBurst, 8), newAdmission(ctxBurst, 8)
 	iotaAsk, kappaAsk := admitAsync(iota), admitAsync(kappa)
-	time.Sleep(100 * time.Millisecond)
+	waitGateParked(t, 2)
 	before := reads.Load()
 	theta.release()
+	var remainingAsk <-chan [2]string
 	select {
 	case <-iotaAsk:
+		remainingAsk = kappaAsk
 	case <-kappaAsk:
+		remainingAsk = iotaAsk
 	case <-time.After(5 * time.Second):
 		t.Fatal("the release woke neither waiter")
 	}
-	time.Sleep(100 * time.Millisecond)
+	waitGateParked(t, 1)
 	if got := reads.Load() - before; got != 1 {
 		t.Fatalf("one release woke two waiters and the host was read %d times, want once for the burst", got)
+	}
+	theta.release()
+	select {
+	case <-remainingAsk:
+	case <-time.After(5 * time.Second):
+		t.Fatal("second release did not wake remaining waiter")
 	}
 	theta.leave()
 	iota.leave()

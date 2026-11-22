@@ -71,7 +71,7 @@ func fileName(r Record) (string, error) {
 
 // Fingerprint is Gofresh's fingerprint in its published record form:
 // the record's `fingerprint` member is Gofresh's own encoding (its
-// fingerprint-record clause — stipulator's seventeen keys in their
+// fingerprint-record clause — stipulator's eighteen keys in their
 // order, the guards flattened, the proof nested), decoded by Gofresh's
 // decoder, which refuses an unknown, duplicated, or null key, a proof
 // without its observable, and a record that is not the form's own
@@ -396,7 +396,7 @@ type entryAssessment struct {
 // the ledger key whenever its complete coordinate parses — a refused
 // record's ledger is kept referenced: every refusal
 // here is the record's own bytes' (a field that fails the format, a
-// manifest that does not decode as canonical Gofresh v3), and keeping
+// manifest that does not decode as a canonical Gofresh runtime-input manifest), and keeping
 // a refused record's ledger costs nothing, so a refusal costs the
 // record's execution and nothing more.
 func loadEntry(name string, data []byte, dir string) entryAssessment {
@@ -409,8 +409,10 @@ func loadEntry(name string, data []byte, dir string) entryAssessment {
 		!validOutcomes(rec) || !validFingerprint(rec.Fingerprint) {
 		return entryAssessment{ledger: digest, refusal: refusal(name, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_EVIDENCE_STRUCTURE, "invalid fingerprint, subject agreement or outcomes", nil)}
 	}
-	if _, err := gofresh.DescribeRuntimeInputs(rec.Fingerprint.RuntimeInputs, dir); err != nil {
-		return entryAssessment{ledger: digest, refusal: refusal(name, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_RUNTIME_MANIFEST, err.Error(), &rec)}
+	if rec.Fingerprint.RuntimeInputs != "" {
+		if _, err := gofresh.DescribeRuntimeInputs(rec.Fingerprint.RuntimeInputs, dir); err != nil {
+			return entryAssessment{ledger: digest, refusal: refusal(name, stipulatorv1.WitnessCacheRefusalCause_WITNESS_CACHE_REFUSAL_CAUSE_RUNTIME_MANIFEST, err.Error(), &rec)}
+		}
 	}
 	return entryAssessment{record: &rec, ledger: digest}
 }
@@ -721,8 +723,15 @@ func validOutcomes(rec Record) bool {
 // only a fully attributed structure may carry a runtime refusal coordinate.
 func validFingerprint(f Fingerprint) bool {
 	return ValidDigest(f.MaximalClosure) && ValidDigest(f.TestVariantClosure) && ValidDigest(f.EffectiveTestVariantClosure()) && f.Guards.Toolchain != "" && ValidDigest(f.Guards.BuildConfig) &&
-		validObservation(f) && validPurity(f.PurityAssertion) && ValidDigest(f.RuntimeDigest) &&
+		validObservation(f) && validPurity(f.PurityAssertion) && validRuntimeTier(f) &&
 		f.ResultKind == gofresh.CodeResult
+}
+
+func validRuntimeTier(f Fingerprint) bool {
+	if f.RuntimeInputs == "" && f.RuntimeDigest == "" {
+		return f.ObservationAssertion == "" && f.ObservationProof == (gofresh.ObservationProof{})
+	}
+	return f.RuntimeInputs != "" && ValidDigest(f.RuntimeDigest)
 }
 
 func validObservation(f Fingerprint) bool {

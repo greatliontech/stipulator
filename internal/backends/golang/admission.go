@@ -7,6 +7,7 @@ import (
 	"os"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/greatliontech/stipulator/internal/resident"
 )
@@ -17,17 +18,24 @@ import (
 // (gomutant's oracle ceiling takes the same floor).
 const packageEstimateFloor = uint64(1) << 30
 
+type readingsFunc func() (resident.Reading, bool)
+
 // readingsHook is the admission's reading of the host and of the pass —
-// resident.Readings in production; a test injects a host that cannot
-// hold a process. reapedPeakHook observes each reap the gate receives —
-// every process a package's slot spawned, the isolation re-runs
-// included — with whether the gate had the process registered and the
-// completed peak it folded: a test seam pinning the wiring of the
-// completed-package evidence and of the tree attribution.
+// resident.Readings in production; tests swap it atomically via injectReading.
+// reapedPeakHook observes each reap the gate receives — every process a
+// package's slot spawned, the isolation re-runs included — with whether the
+// gate had the process registered and the completed peak it folded.
 var (
-	readingsHook   = resident.Readings
+	readingsHook   atomic.Pointer[readingsFunc]
 	reapedPeakHook func(pkg string, pid int, registered bool, peakBytes uint64)
 )
+
+func loadReadingsHook() readingsFunc {
+	if fn := readingsHook.Load(); fn != nil {
+		return *fn
+	}
+	return resident.Readings
+}
 
 // admission gates the spawn of package processes under the derived
 // concurrency bound and, where the host reports its memory, the memory
@@ -149,6 +157,8 @@ func (o estimateOrigin) words() string {
 type hostGate struct {
 	mu      sync.Mutex
 	cond    *sync.Cond
+	parked  *sync.Cond
+	waiters int
 	members map[*admission]bool
 	// gen counts the wakes (every broadcast); reading is the one
 	// reading the waiters woken by the latest wake judge over, taken
@@ -162,6 +172,7 @@ type hostGate struct {
 func newHostGate() *hostGate {
 	g := &hostGate{members: map[*admission]bool{}}
 	g.cond = sync.NewCond(&g.mu)
+	g.parked = sync.NewCond(&g.mu)
 	return g
 }
 
@@ -178,7 +189,7 @@ func (g *hostGate) wake() {
 // whole burst, so a burst of W waiters costs one walk, not W.
 func (g *hostGate) readingFor(fresh bool) (resident.Reading, bool) {
 	if fresh || g.readingGen != g.gen {
-		g.reading, g.readingOK = readingsHook()
+		g.reading, g.readingOK = loadReadingsHook()()
 		g.readingGen = g.gen
 	}
 	return g.reading, g.readingOK
@@ -381,7 +392,10 @@ func (a *admission) admit() (admitted bool, refusal, held string) {
 			}
 			held = words
 		}
+		g.waiters++
+		g.parked.Broadcast()
 		g.cond.Wait()
+		g.waiters--
 		fresh = false
 	}
 }

@@ -367,8 +367,8 @@ func (s *Served) captureSourceCertificates(endpoint *selectionEndpoint, symbols 
 			Directory:   reader.Dir,
 			Environment: reader.Env,
 			Flags:       view.flags,
-			GoEnv:       snapshot.Values(),
-		}, reader.Runner.PrepareCommand)
+			Inputs:      []string{},
+		}, snapshot.Values(), reader.Runner.PrepareCommand)
 		if err != nil {
 			return nil, err
 		}

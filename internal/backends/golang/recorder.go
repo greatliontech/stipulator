@@ -417,6 +417,9 @@ func (g *captureGroup) subsetForSubjects(subjects []gofresh.Subject) *captureGro
 	if g == nil {
 		return nil
 	}
+	if g.sessionState == nil {
+		g.sessionState = &groupSessionState{}
+	}
 	sub := *g
 	sub.view = nil
 	sub.legs = nil

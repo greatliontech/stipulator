@@ -833,3 +833,45 @@ func TestProfileContentMovesTheFingerprint(t *testing.T) {
 		t.Fatal("the profile flag left the build guards unchanged")
 	}
 }
+
+func TestGroupSessionRetainsWarmSessionAcrossSubsetWaves(t *testing.T) {
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":      "module example.com/sessionshare\n\ngo 1.26\n",
+		"p/p.go":      "package p\nfunc F() int { return 1 }\n",
+		"p/p_test.go": "package p\nimport \"testing\"\nfunc TestF(*testing.T) {}\n",
+	})
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetRace(true)
+	pol := &stipulatorv1.TestPolicy{}
+	pol.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("race", cfg)})
+	ctx := t.Context()
+	d, err := mustCapture(t, ctx, dir, pol).discover(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(d.groups) != 1 || d.groups[0].sessionState == nil {
+		t.Fatalf("groups = %+v, want 1 group with initialized sessionState", d.groups)
+	}
+	g := d.groups[0]
+	s1, err := groupSession(ctx, dir, g, &pgoObservation{inputs: []string{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sub := g.subsetForSubjects(groupSubjects(g))
+	s2, err := groupSession(ctx, dir, sub, &pgoObservation{inputs: []string{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s1 != s2 {
+		t.Fatalf("subset retry wave allocated a fresh Session (%p != %p) despite unchanged inputs", s2, s1)
+	}
+	s3, err := groupSession(ctx, dir, sub, &pgoObservation{inputs: []string{"pgo=sha256:changed"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if s3 == s1 {
+		t.Fatal("changed PGO inputs reused stale Session")
+	}
+}

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
-	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/trace"
 )
 
@@ -95,6 +94,27 @@ func prepareWitnessGeneration(ctx context.Context, root string, g *captureGroup)
 	return witnessPreparation{population: roster, native: snapshot, solo: solo, soloSubjects: soloSubjects, inputs: inputs}, nativeErr
 }
 
+func checkSubjectsInMemory(ctx context.Context, snapshot *gofresh.Snapshot, dir string, env []string, subjects []gofresh.Subject) ([]gofresh.CheckedCandidate, error) {
+	fps, err := snapshot.CaptureBatch(ctx)
+	if err != nil {
+		return nil, err
+	}
+	binding, err := snapshot.BindRuntime(ctx, gofresh.RuntimeDescription{Directory: dir, Environment: env})
+	if err != nil {
+		return nil, err
+	}
+	cu, err := binding.BeginCheck(subjects)
+	if err != nil {
+		return nil, err
+	}
+	defer cu.Abort()
+	cands := make([]gofresh.Candidate, len(subjects))
+	for i, s := range subjects {
+		cands[i] = gofresh.Candidate{Subject: s, Recorded: fps[s]}
+	}
+	return cu.CheckBatch(ctx, cands)
+}
+
 func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, inputs *pgoObservation, subjects []gofresh.Subject) (*gofresh.Snapshot, *gofresh.Snapshot, map[gofresh.Subject]bool, error) {
 	capStart := time.Now()
 	var soloCount, candCount int
@@ -106,20 +126,7 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 			trace.Int64("duration_ms", time.Since(capStart).Milliseconds()),
 		)
 	}()
-	policy := gofresh.SessionPolicy{
-		EvidenceRoot: root, Vouches: slices.Clone(g.vouches), Execution: gofresh.PackageExecution,
-		PrepareCommand: engineRunner.PrepareCommand,
-		Progress:       func(p gofresh.Progress) { emitEngineDiagnostic(p); progress.FromContext(ctx).Keepalive() },
-	}
-	if g.assumePure {
-		policy.PureSubjects = subjects
-	}
-	buildDesc := gofresh.BuildDescription{
-		Directory: g.directory(root), Environment: g.witnessEnv,
-		Flags:  append(buildFlags(g.race, g.tags, g.moduleMode, buildPGO(root, g.pgo)), linkerBuildFlags(g.linkerAssignments)...),
-		Inputs: append([]string{}, inputs.inputs...),
-	}
-	session, err := gofresh.NewSession(ctx, buildDesc, policy)
+	session, err := groupSession(ctx, root, g, inputs)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -127,14 +134,8 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	fps, err := snapshot.CaptureBatch(ctx)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, nil, ctx.Err()
-		}
-		return snapshot, nil, nil, nil
-	}
-	verdicts, err := snapshot.CheckBatch(ctx, fps)
+	dir := g.directory(root)
+	checked, err := checkSubjectsInMemory(ctx, snapshot, dir, g.witnessEnv, subjects)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, nil, nil, ctx.Err()
@@ -142,42 +143,23 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 		return snapshot, nil, nil, nil
 	}
 	var candidates []gofresh.Subject
-	for _, s := range subjects {
-		if verdicts[s].Ground.Cause.Kind == gofresh.SharedDynamicStateCause {
-			candidates = append(candidates, s)
+	for _, c := range checked {
+		if c.Verdict.Ground.Cause.Kind == gofresh.SharedDynamicStateCause {
+			candidates = append(candidates, c.Subject)
 		}
 	}
 	candCount = len(candidates)
 	if len(candidates) == 0 {
 		return snapshot, nil, nil, nil
 	}
-	soloPolicy := policy
-	soloPolicy.Execution = gofresh.SingleSubjectExecution
-	if g.assumePure {
-		soloPolicy.PureSubjects = candidates
-	}
-	soloSession, err := gofresh.NewSession(ctx, buildDesc, soloPolicy)
+	soloSnapshot, err := snapshot.WithExecution(gofresh.SingleSubjectExecution)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, nil, nil, ctx.Err()
 		}
 		return snapshot, nil, nil, nil
 	}
-	candSnapshot, err := soloSession.Snapshot(ctx, candidates, gofresh.CodeResult)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, nil, ctx.Err()
-		}
-		return snapshot, nil, nil, nil
-	}
-	soloFPs, err := candSnapshot.CaptureBatch(ctx)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, nil, nil, ctx.Err()
-		}
-		return snapshot, nil, nil, nil
-	}
-	soloVerdicts, err := candSnapshot.CheckBatch(ctx, soloFPs)
+	soloChecked, err := checkSubjectsInMemory(ctx, soloSnapshot, dir, g.witnessEnv, candidates)
 	if err != nil {
 		if ctx.Err() != nil {
 			return nil, nil, nil, ctx.Err()
@@ -185,16 +167,16 @@ func captureNativeGeneration(ctx context.Context, root string, g *captureGroup, 
 		return snapshot, nil, nil, nil
 	}
 	soloSubjects := map[gofresh.Subject]bool{}
-	for _, s := range candidates {
-		if soloVerdicts[s].Ground.Cause.Kind != gofresh.SharedDynamicStateCause {
-			soloSubjects[s] = true
+	for _, c := range soloChecked {
+		if c.Verdict.Ground.Cause.Kind != gofresh.SharedDynamicStateCause {
+			soloSubjects[c.Subject] = true
 		}
 	}
 	soloCount = len(soloSubjects)
 	if len(soloSubjects) == 0 {
 		return snapshot, nil, nil, nil
 	}
-	return snapshot, candSnapshot, soloSubjects, nil
+	return snapshot, soloSnapshot, soloSubjects, nil
 }
 
 // nativePackageLeg binds checking to the same runtime coordinate that the
@@ -242,6 +224,7 @@ func executionLegs(ctx context.Context, n *NormalizedInvocation, packages []stri
 		pgo: n.PGO, assumePure: n.AssumePure, vouches: n.Vouches, selectedPackages: n.selectedPackages,
 		linkerAssignments: slices.Clone(n.LinkerAssignments),
 		invs:              []string{n.Name}, packages: map[string]*groupPackage{},
+		sessionState: &groupSessionState{},
 	}
 	for _, pkg := range packages {
 		if len(n.runnables[pkg]) != 0 {

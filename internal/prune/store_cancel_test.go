@@ -18,13 +18,9 @@ func TestStoreGCPropagatesCancellationFromPolicyCapture(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := t.TempDir()
-	inputs, err := gofresh.MergeObservations(dir, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	rec := witnesscache.Record{Group: "group", Package: "example.com/p", Test: "TestA", Outcomes: map[string]string{"example.com/p.TestA": "passed"}, Fingerprint: gofresh.Fingerprint{
 		MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32), ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
-		Guards: gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
+		Guards: gofresh.Guards{Toolchain: "go1.27.2", BuildConfig: strings.Repeat("c", 32)}, ResultKind: gofresh.CodeResult,
 	}}
 	if err := witnesscache.Install(t.Context(), dir, rec); err != nil {
 		t.Fatal(err)

@@ -646,10 +646,6 @@ func TestPruneToolStoreGC(t *testing.T) {
 	stipulate.Covers(t, "REQ-evidence-store-gc")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	root := t.TempDir()
-	inputs, err := gofresh.MergeObservations(root, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	install := func(pkg, test string) {
 		t.Helper()
 		// A record carries its producing group: one without is refused
@@ -657,8 +653,8 @@ func TestPruneToolStoreGC(t *testing.T) {
 		if err := witnesscache.Install(t.Context(), root, witnesscache.Record{Group: "6772702d64696765", Package: pkg, Test: test, Outcomes: map[string]string{pkg + "." + test: "passed"}, Fingerprint: witnesscache.Fingerprint{
 			MaximalClosure: strings.Repeat("a", 32), TestVariantClosure: strings.Repeat("b", 32),
 			ClosureStrategy: gofresh.ClosureStrategy, DynamicStateStrategy: gofresh.DynamicStateStrategy,
-			Guards:        gofresh.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
-			RuntimeInputs: inputs.Manifest, RuntimeDigest: inputs.Digest, ResultKind: gofresh.CodeResult,
+			Guards:     gofresh.Guards{Toolchain: "go1.27.1", BuildConfig: strings.Repeat("c", 32)},
+			ResultKind: gofresh.CodeResult,
 		}}); err != nil {
 			t.Fatal(err)
 		}

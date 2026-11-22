@@ -306,9 +306,6 @@ func resolveLinkerSelection(n *NormalizedInvocation, cfg *stipulatorv1.GoInvocat
 		n.DeclaredLinkerStrings = append(n.DeclaredLinkerStrings, string(quotedList([]string{x.GetPackage(), x.GetVariable(), kind, source})))
 	}
 	seen := map[string]bool{}
-	if len(cfg.GetInputFilesFromEnvironment()) != 0 {
-		n.inputRoots = &gofresh.InputRoots{}
-	}
 	for _, name := range cfg.GetInputFilesFromEnvironment() {
 		p, ok := gotool.LookupEnv(n.Env, name)
 		if !ok || p == "" || !filepath.IsAbs(p) || filepath.Clean(p) != p {
@@ -320,6 +317,9 @@ func resolveLinkerSelection(n *NormalizedInvocation, cfg *stipulatorv1.GoInvocat
 		seen[p] = true
 		n.InputFiles = append(n.InputFiles, selectedInputFile{Name: name, Path: p})
 	}
+	if len(n.InputFiles) != 0 {
+		n.inputRoots = &gofresh.FileInputRoots{}
+	}
 	return nil
 }
 
@@ -327,14 +327,26 @@ func resolveLinkerSelection(n *NormalizedInvocation, cfg *stipulatorv1.GoInvocat
 // independently of native preparation. Eligibility grants no read or outcome
 // evidence; only the observation owner decides whether bytes are observable.
 func requireExactInputEligibility(ctx context.Context, n *NormalizedInvocation, runtime *retainedEnvironment) error {
+	if len(n.InputFiles) == 0 {
+		return nil
+	}
+	root := treeRoot(n)
+	if root == "" {
+		root = runtime.Dir
+	}
+	excluded := runnerEnvironmentExcludedPaths(n, runtime.Env)
+	opts := gofresh.FileInputOptions{
+		Env:            runtime.Env,
+		PrepareCommand: ownedRunner.PrepareCommand,
+		Roots:          n.inputRoots,
+		ExcludedPaths:  excluded,
+	}
 	for _, f := range n.InputFiles {
 		value, ok := gotool.LookupEnv(runtime.Env, f.Name)
 		if !ok || value != f.Path {
 			return fmt.Errorf("input file environment %s no longer selects frozen file %s", f.Name, f.Path)
 		}
-		reason, err := gofresh.CheckFileInputEligibility(ctx, treeRoot(n), runtime.Dir, f.Path, gofresh.ProducerIngest{
-			Env: runtime.Env, PrepareCommand: ownedRunner.PrepareCommand, Roots: n.inputRoots, ExcludedPaths: runnerEnvironmentExcludedPaths(n, runtime.Env),
-		})
+		reason, err := gofresh.CheckFileInputEligibility(ctx, root, runtime.Dir, f.Path, opts)
 		if err != nil {
 			return fmt.Errorf("input file environment %s (%s): %w", f.Name, f.Path, err)
 		}

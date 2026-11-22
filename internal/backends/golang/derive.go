@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
@@ -294,6 +295,9 @@ type captureGroup struct {
 	// main packages, including when the invocation omits the PGO flag.
 	selectedPackages []listedPackage
 	telemetrySource  string
+	// sessionState shares the group's gofresh.Session across retry-wave
+	// subset copies when pgo inputs have not changed, preserving Session.localFacts.
+	sessionState *groupSessionState
 	// view is the shared pre-execution source/build generation. Runtime
 	// bindings and independent producing/checking units derive from it.
 	view *witnessSnapshot
@@ -798,6 +802,7 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation, exe
 				excludedPaths:     canonicalReviewedExclusions(n.ExcludedPaths),
 				scratchNamespaces: canonicalReviewedNamespaces(n.ScratchNamespaces),
 				packages:          map[string]*groupPackage{},
+				sessionState:      &groupSessionState{},
 			}
 			byKey[key] = g
 			keys = append(keys, key)
@@ -850,6 +855,58 @@ func groupSubjects(g *captureGroup) []gofresh.Subject {
 // loads against the seeding backend's release.
 var beforeGroupEngineForTest func()
 
+type groupSessionState struct {
+	mu      sync.Mutex
+	session *gofresh.Session
+	inputs  []string
+	ctx     atomic.Pointer[context.Context]
+}
+
+// groupSession returns a reusable gofresh.Session for g under dir and inputs,
+// preserving Session.localFacts across retry waves when pgo inputs are unchanged.
+func groupSession(ctx context.Context, dir string, g *captureGroup, inputs *pgoObservation) (*gofresh.Session, error) {
+	state := g.sessionState
+	if state == nil {
+		state = &groupSessionState{}
+		g.sessionState = state
+	}
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	ctxCopy := ctx
+	state.ctx.Store(&ctxCopy)
+	if state.session != nil && slices.Equal(state.inputs, inputs.inputs) {
+		return state.session, nil
+	}
+	policy := gofresh.SessionPolicy{
+		EvidenceRoot:   dir,
+		Vouches:        slices.Clone(g.vouches),
+		Execution:      gofresh.PackageExecution,
+		PrepareCommand: engineRunner.PrepareCommand,
+		Progress: func(p gofresh.Progress) {
+			emitEngineDiagnostic(p)
+			if cp := state.ctx.Load(); cp != nil && *cp != nil {
+				progress.FromContext(*cp).Keepalive()
+			}
+		},
+	}
+	if g.assumePure {
+		policy.AssumePure = func(gofresh.Subject) bool { return true }
+	}
+	flags := append(buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), linkerBuildFlags(g.linkerAssignments)...)
+	sess, err := gofresh.NewSession(ctx, gofresh.BuildDescription{
+		Directory:   g.directory(dir),
+		Environment: g.witnessEnv,
+		Flags:       flags,
+		Inputs:      append([]string{}, inputs.inputs...),
+	}, policy)
+	if err != nil {
+		return nil, err
+	}
+	state.session = sess
+	state.inputs = slices.Clone(inputs.inputs)
+	return sess, nil
+}
+
 // groupEngine constructs a source-analysis session for dynamic-state
 // explanations. Native production and checking use groupSnapshot.
 func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Session, error) {
@@ -876,30 +933,7 @@ func groupEngine(ctx context.Context, dir string, g *captureGroup) (*gofresh.Ses
 	if err != nil {
 		return nil, err
 	}
-	policy := gofresh.SessionPolicy{
-		EvidenceRoot:   dir,
-		Vouches:        slices.Clone(g.vouches),
-		Execution:      gofresh.PackageExecution,
-		PrepareCommand: engineRunner.PrepareCommand,
-		Progress: func(p gofresh.Progress) {
-			emitEngineDiagnostic(p)
-			progress.FromContext(ctx).Keepalive()
-		},
-	}
-	if g.assumePure {
-		policy.PureSubjects = groupSubjects(g)
-	}
-	// The witness command compiles as well as executes. Analyze under its
-	// complete environment, including the width cap: a compiler wrapper can
-	// read that value too. A split environment requires a separately built
-	// artifact, which this producing path does not provide.
-	flags := append(buildFlags(g.race, g.tags, g.moduleMode, buildPGO(dir, g.pgo)), linkerBuildFlags(g.linkerAssignments)...)
-	return gofresh.NewSession(ctx, gofresh.BuildDescription{
-		Directory:   g.directory(dir),
-		Environment: g.witnessEnv,
-		Flags:       flags,
-		Inputs:      append([]string{}, inputs.inputs...),
-	}, policy)
+	return groupSession(ctx, dir, g, inputs)
 }
 
 func (g *captureGroup) directory(root string) string {

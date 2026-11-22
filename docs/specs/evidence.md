@@ -828,10 +828,13 @@ optional `inertTestVariantApplicability`,
 and numeric `resultKind`; the applicability object is Gofresh's native
 record form (`strategy` and `testVariantClosure`) and never replaces the
 producing `testVariantClosure`; closure
-(maximal and test-variant), build, and runtime digests are 16-byte
+(maximal and test-variant), build, and (when present) runtime digests are 16-byte
 lowercase hexadecimal values, the observation assertion and proof are
 structurally encoded attributable Gofresh evidence for the record's
-subject, the runtime manifest is canonical Gofresh v3, purity is empty
+subject, `runtimeInputs` and `runtimeDigest` are either both absent (on an
+observation-free record carrying neither `observationAssertion` nor
+`observationProof`) or both present with `runtimeInputs` encoding a canonical
+Gofresh runtime-input manifest and `runtimeDigest` its 16-byte digest, purity is empty
 or a recognized Gofresh attribution, the vouch and discharge sets are
 Gofresh's canonical sorted comma-joined `<import path>.<Variable>`
 identities (vouches: the reviewed acceptances that discharged culprits

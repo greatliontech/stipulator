@@ -41,8 +41,8 @@ github.com/google/jsonschema-go v0.4.3 h1:/DBOLZTfDow7pe2GmaJNhltueGTtDKICi8V8p+
 github.com/google/jsonschema-go v0.4.3/go.mod h1:r5quNTdLOYEz95Ru18zA0ydNbBuYoo9tgaYcxEYhJVE=
 github.com/greatliontech/go-x-tools v0.52.1-0.20261112192041-23335f31d87c h1:IFFSOqqQbRzVKbNBXDGorNDkyOKTVAanD1sxQQpcIIw=
 github.com/greatliontech/go-x-tools v0.52.1-0.20261112192041-23335f31d87c/go.mod h1:cUSR23Vdl3o19B1D2BPKTHAsvBRm/ZFGxUMwcim5b2Y=
-github.com/greatliontech/gofresh v0.127.0 h1:GEvtNC2Dos4RckrIiqNQis1NACv8NCliIihB9rOSEl0=
-github.com/greatliontech/gofresh v0.127.0/go.mod h1:FvRLGots636StpZX+fmvg731mCtxS85dJJ1WRLSxEMs=
+github.com/greatliontech/gofresh v0.128.0 h1:nHh8uYK2JJxmneOcrF9myfGtCaMTXQfCGGolIfwPmCo=
+github.com/greatliontech/gofresh v0.128.0/go.mod h1:FvRLGots636StpZX+fmvg731mCtxS85dJJ1WRLSxEMs=
 github.com/greatliontech/stipulator/stipulate v0.1.0 h1:HZ4MnlDswQDa9T8Je+m+avajnHVA4iCWDEKJMEGcarc=
 github.com/greatliontech/stipulator/stipulate v0.1.0/go.mod h1:j7D1PnMS8A/9b/eUB8tzuz0LpKtndcO7KRA64PzbYB4=
 github.com/greatliontech/stipulator/stipulate/structural v0.3.1 h1:FRe2S11CXSP2WnSXM7/RD5iqzn2wYI8kYskD2oGoKUE=

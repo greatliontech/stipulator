@@ -1,7 +1,9 @@
 package golang
 
 import (
+	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -400,4 +402,48 @@ func linkerRuntime(t *testing.T, n *NormalizedInvocation) *retainedEnvironment {
 		t.Fatal(err)
 	}
 	return &retainedEnvironment{Dir: n.Dir, Env: env}
+}
+
+func TestInputFileNormalizationSpawnsOneEnvAndMemoizesAcrossPackages(t *testing.T) {
+	neutralAmbient(t)
+	dir := writeModule(t, map[string]string{
+		"go.mod":  "module example.com/inputmemo\n\ngo 1.26\n",
+		"a/a.go":  "package a\n",
+		"b/b.go":  "package b\n",
+		"raw.bin": "payload",
+	})
+	rawPath := filepath.Join(dir, "raw.bin")
+	t.Setenv("STIPULATOR_RAW_INPUT", rawPath)
+	cfg := &stipulatorv1.GoInvocationConfig{}
+	cfg.SetPackages([]string{"./..."})
+	cfg.SetInputFilesFromEnvironment([]string{"STIPULATOR_RAW_INPUT"})
+	inv := goInvocation("inputs", cfg)
+
+	cancelled, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := NormalizeInvocation(cancelled, dir, inv); !errors.Is(err, context.Canceled) {
+		t.Fatalf("NormalizeInvocation(cancelled) = %v, want context.Canceled", err)
+	}
+
+	c := countSpawns(t)
+	n, err := NormalizeInvocation(t.Context(), dir, inv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := c.snapshot(); got.env != 1 || got.list != 0 || got.test != 0 || got.child != 0 {
+		t.Fatalf("NormalizeInvocation with input_files_from_environment spawned %+v, want exactly 1 go env query", got)
+	}
+
+	// Repeat eligibility checks in the same package directory: n.inputRoots
+	// memoizes the classification-root probe across attempts.
+	c.reset()
+	rt := linkerRuntime(t, n)
+	for range 3 {
+		if err := requireExactInputEligibility(t.Context(), n, rt); err != nil {
+			t.Fatalf("requireExactInputEligibility: %v", err)
+		}
+	}
+	if got := c.snapshot(); got.env != 1 {
+		t.Fatalf("requireExactInputEligibility spawned %d go env queries across 3 checks, want 1", got.env)
+	}
 }
