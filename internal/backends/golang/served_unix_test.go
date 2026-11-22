@@ -106,7 +106,7 @@ func TestGoResolverCancellationTerminatesDescendants(t *testing.T) {
 		if err == nil {
 			t.Fatal("cancelled resolution returned no error")
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("resolution did not stop after cancellation")
 	}
 

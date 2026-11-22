@@ -1280,3 +1280,33 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "81d93a20d881085bd5a5f2c756f826dfcb3523d602d2d840ff439fbfbca60096"
 }
+
+bindings {
+  requirement_id: "REQ-policy-conservation"
+  content_hash: "9e1e49c0acd384835c8e653296abeca90dd61eb35da4ca979af1ab0ba99185bb"
+  source_hash: "d37c066b7cf289cddaf8d0f5b3087742e7ee27dad44688b7ae08b5ac1573e13e"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRepoPolicyPartitionConservesObligationUniverse"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7d9706900bf467c1b27fa878afe63db12963714ad7b769db0e4e551a20eda82e"
+}
+
+bindings {
+  requirement_id: "REQ-policy-record-location"
+  content_hash: "fd89ea10474c289b534d010e7d9d34ca8aab6a438aaae717282ffb9e45a76b9b"
+  source_hash: "5eaa69dbca0d6902f9c3591ebd603c5c6f7b2940e8a8ccfe578e7694507668dd"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestRepoPolicyPartitionConservesObligationUniverse"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7d9706900bf467c1b27fa878afe63db12963714ad7b769db0e4e551a20eda82e"
+}
+
+bindings {
+  requirement_id: "REQ-policy-cancellation-publication-slot"
+  content_hash: "963e4b1b2079489fce290a28da9493883a24c45d83cd4ecfc4f5f87ddbe73336"
+  source_hash: "e3f487b2f2d35c84f1bb8b5900574a9bd8f411b11407b4ed386bca7fc233ab68"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.executePackageUnits"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "c76df4e5958eaf5333a36e91b553af008776c560f126ef5993c8da760a224e11"
+}

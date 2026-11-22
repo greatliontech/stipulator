@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"sync"
 	"testing"
 	"time"
 
@@ -108,12 +109,17 @@ func TestNativeIsolationKeepsAttemptEvidence(t *testing.T) {
 	p := &stipulatorv1.TestPolicy{}
 	p.SetInvocations([]*stipulatorv1.PolicyInvocation{goInvocation("native", cfg)})
 	writePolicyRecord(t, dir, p)
-	var accounts []gofresh.ProcessAccount
+	var (
+		closeMu  sync.Mutex
+		accounts []gofresh.ProcessAccount
+	)
 	prior := closeNativeProcess
 	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		final, err := prior(ctx, unit)
 		account, _ := unit.Account()
+		closeMu.Lock()
 		accounts = append(accounts, account)
+		closeMu.Unlock()
 		return final, err
 	}
 	t.Cleanup(func() { closeNativeProcess = prior })

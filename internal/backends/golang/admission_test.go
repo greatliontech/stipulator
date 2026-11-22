@@ -1168,10 +1168,11 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 	second := newAdmission(ctx2, 8)
 	t.Cleanup(func() { second.leave() })
 	heldAsk := admitAsync(second)
+	waitGateParked(t, 1)
 	select {
 	case got := <-heldAsk:
 		t.Fatalf("beside the first operation the second was answered %v, want it held", got)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	// The first operation releases one package: the release alone
 	// wakes the second's waiter, and the second admits into the room it
@@ -1191,10 +1192,11 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 	third := newAdmission(ctx2, 8)
 	t.Cleanup(func() { third.leave() })
 	thirdAsk := admitAsync(third)
+	waitGateParked(t, 1)
 	select {
 	case got := <-thirdAsk:
 		t.Fatalf("beside two operations' packages the third was answered %v, want it held", got)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	first.leave()
 	select {
@@ -1254,10 +1256,11 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 	}
 	mu.Unlock()
 	alphaSecond := admitAsync(alpha)
+	waitGateParked(t, 1)
 	select {
 	case got := <-alphaSecond:
 		t.Fatalf("alpha's second package beside its 3 GiB tree was answered %v, want held", got)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	mu.Lock()
 	reading = resident.Reading{
@@ -1271,10 +1274,11 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 		t.Fatalf("beta's first package beside alpha's shrunk tree was refused: %q", refusal)
 	}
 	betaSecond := admitAsync(beta)
+	waitGateParked(t, 2)
 	select {
 	case got := <-betaSecond:
 		t.Fatalf("beta's second package was answered %v, want held: alpha's tree still reserves 2.5 GiB by alpha's own rule", got)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	// Refused only when nothing of the process runs: gamma, with
 	// nothing running, asks beside alpha's running package whose tree
@@ -1291,10 +1295,11 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 	ctxG, cancelG := context.WithCancel(context.Background())
 	gamma := newAdmission(ctxG, 8)
 	gammaAsk := admitAsync(gamma)
+	waitGateParked(t, 3)
 	select {
 	case got := <-gammaAsk:
 		t.Fatalf("gamma beside alpha's running package was answered %v, want held", got)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	cancelG()
 	select {
@@ -1305,7 +1310,17 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("gamma's held ask did not end with its invocation")
 	}
+	gamma.leave()
 	cancelA()
+	for _, pending := range []<-chan [2]string{alphaSecond, betaSecond} {
+		select {
+		case <-pending:
+		case <-time.After(5 * time.Second):
+			t.Fatal("cancelled operation ask did not return before resetting the gate")
+		}
+	}
+	beta.leave()
+	alpha.leave()
 	// The growth term is the process's: a later operation's admission
 	// reserves the room back to the largest set ANY admission of the
 	// process has read — delta saw the pass at 1.5 GiB, epsilon, minted
@@ -1377,10 +1392,11 @@ func TestAdmissionsOfOneProcessShareTheHostGate(t *testing.T) {
 	defer cancelE()
 	eta := newAdmission(ctxE, 8)
 	etaAsk := admitAsync(eta)
+	waitGateParked(t, 1)
 	select {
 	case got := <-etaAsk:
 		t.Fatalf("eta beside a cancelled operation's running package was answered %v, want held", got)
-	case <-time.After(150 * time.Millisecond):
+	default:
 	}
 	mu.Lock()
 	reading = resident.Reading{

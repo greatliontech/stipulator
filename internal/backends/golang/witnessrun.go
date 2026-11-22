@@ -301,6 +301,9 @@ func runWitnesses(ctx context.Context, pc *Capture, scope map[gofresh.Subject]bo
 			for _, leg := range wg.legs {
 				leg.dispose()
 			}
+			if wg.g != nil {
+				wg.g.sessionState = nil
+			}
 		}
 	}()
 	degraded := ""
@@ -897,9 +900,13 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 			for _, leg := range prepared {
 				leg.dispose()
 			}
+			for _, g := range d.groups {
+				g.sessionState = nil
+			}
 		}
 	}()
 	for g, subjects := range d.populatedGroups() {
+		g.sessionState = &groupSessionState{}
 		declarations := declarationsFor(g)
 		view, inputs, err := groupSnapshot(ctx, dir, g)
 		if err != nil {
@@ -997,9 +1004,9 @@ func prepareWitnessGroups(ctx context.Context, dir string, d *policyDiscovery, c
 					// the coming re-execution; fallback rounds fill in only when no
 					// earlier round recorded one, and a later round's success deletes it.
 					if round == 0 || wg.executedWhy[s] == (executedReason{}) {
-						wg.executedWhy[s] = verdictExecutedReason(checked.Verdict.Reason)
+						wg.executedWhy[s] = verdictExecutedReason(verdictReasonWithMovers(checked.Verdict.Reason, checked.MovedInputs))
 						if err == nil && extended.Verdict.Reason != "" {
-							wg.executedWhy[s] = verdictExecutedReason(extended.Verdict.Reason)
+							wg.executedWhy[s] = verdictExecutedReason(verdictReasonWithMovers(extended.Verdict.Reason, extended.MovedInputs))
 						}
 					}
 					if err != nil && ctx.Err() != nil {

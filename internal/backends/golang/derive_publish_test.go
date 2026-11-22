@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -289,14 +290,19 @@ func TestGoDerivePublishesWholeProcessObservationEvidence(t *testing.T) {
 		t.Skip("executes a race-instrumented policy over a temporary module")
 	}
 	neutralAmbient(t)
-	var finalized []gofresh.Finalized
-	accounts := map[string]gofresh.ProcessAccount{}
+	var (
+		closeMu   sync.Mutex
+		finalized []gofresh.Finalized
+		accounts  = map[string]gofresh.ProcessAccount{}
+	)
 	priorClose := closeNativeProcess
 	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		final, err := priorClose(ctx, unit)
 		account, _ := unit.Account()
+		closeMu.Lock()
 		accounts[account.Process] = account
 		finalized = append(finalized, final)
+		closeMu.Unlock()
 		return final, err
 	}
 	t.Cleanup(func() { closeNativeProcess = priorClose })

@@ -3,6 +3,7 @@ package golang
 import (
 	"context"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/greatliontech/gofresh"
@@ -34,11 +35,16 @@ func TestNativeRawSelectionIncludesUnsupportedNeighbor(t *testing.T) {
 	if _, err := DiscoverInvocation(t.Context(), n); err != nil {
 		t.Fatal(err)
 	}
-	var final gofresh.Finalized
+	var (
+		closeMu sync.Mutex
+		final   gofresh.Finalized
+	)
 	prior := closeNativeProcess
 	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		result, err := prior(ctx, unit)
+		closeMu.Lock()
 		final = result
+		closeMu.Unlock()
 		return result, err
 	}
 	t.Cleanup(func() { closeNativeProcess = prior })

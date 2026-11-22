@@ -2431,3 +2431,13 @@ bindings {
   role: BINDING_ROLE_TESTS
   shape_hash: "7cae1dad795f6991b89b62724d9f8c7a4c6b106472c8e6a821cdc515950a8816"
 }
+
+bindings {
+  requirement_id: "REQ-go-retained-test-execution"
+  content_hash: "1169436730cbee8e05f2db587aa3af0248e2ac36ca59f9d014667accb82579df"
+  source_hash: "f93fa2cf38c06193d7865b51727b3a250df68231167b38feb8811763d5a35d82"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestUnwitnessedAttemptOmitsTestlogAndSingleSubjectPrepTracesNeedsObservation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9d7eed4d17641615b277b67e7d0f9552d01689a1ef6bf82dcfe4645d40bf9554"
+}

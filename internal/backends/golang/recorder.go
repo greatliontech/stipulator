@@ -54,13 +54,16 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 	if err != nil {
 		return degrade(err)
 	}
+	complete := false
 	defer func() {
-		if r.degraded != "" {
+		if !complete {
 			for _, g := range d.groups {
 				for _, leg := range g.legs {
 					leg.dispose()
 				}
+				g.legs = nil
 				g.view = nil
+				g.sessionState = nil
 			}
 		}
 	}()
@@ -97,6 +100,7 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 		}
 	}
 	for g, subjects := range d.populatedGroups() {
+		g.sessionState = &groupSessionState{}
 		view, inputs, err := groupSnapshot(ctx, dir, g)
 		if err != nil {
 			return degrade(err)
@@ -120,6 +124,7 @@ func NewWitnessRecorder(ctx context.Context, pc *Capture, seeding verify.Witness
 	// race-instrumented builds; the views stay alive for post-execution
 	// producer validation.
 	debug.FreeOSMemory()
+	complete = true
 	return r, nil
 }
 

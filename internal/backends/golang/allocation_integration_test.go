@@ -165,11 +165,11 @@ func TestGoScopedAllocationWarmUnobservedWidthMovement(t *testing.T) {
 
 func checkScopedAllocationWidthMovement(t *testing.T, observesWidth bool) {
 	t.Helper()
-	if runtime.GOMAXPROCS(0) < 4 {
-		t.Skip("two package slots require at least four processors")
-	}
 	neutralAmbient(t)
-	t.Setenv("GOMAXPROCS", strconv.Itoa(runtime.GOMAXPROCS(0)))
+	procs := max(4, runtime.GOMAXPROCS(0))
+	prevProcs := runtime.GOMAXPROCS(procs)
+	t.Cleanup(func() { runtime.GOMAXPROCS(prevProcs) })
+	t.Setenv("GOMAXPROCS", strconv.Itoa(procs))
 	imports, body := `import "testing"`, `if 2+2 != 4 { t.Fatal("arithmetic") }`
 	if observesWidth {
 		imports, body = `import ("os";"testing")`, `if os.Getenv("GOMAXPROCS") == "" { t.Fatal("missing width") }`

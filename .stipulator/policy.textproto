@@ -2,23 +2,73 @@
 # proto-message: stipulator.v1.TestPolicy
 
 invocations {
-  name: "race"
-  # Budgets cover a cold FULL re-execution of the whole witness set
-  # under the gofresh v0.105.1 engine. Measured 2026-09-21 from an
-  # empty store, on a check one red pin (since fixed) failed, so the
-  # wall alone stands: 46m51s whole-check wall (execution 44m53s) for
-  # 770 executed, 464 uncacheable, 0 served; the race binary of
-  # internal/backends/golang, 2685s, the long pole (1805s+ on
-  # 2026-08-26, when it aborted the previous 30m binary budget twice).
-  # 100m per test binary is ~2.2x that long pole; 7200s per invocation
-  # is ~2.7x the race invocation's own wall (~2.6x the whole check's).
+  name: "race:core"
   timeout {
-    seconds: 7200
+    seconds: 3600
   }
   go {
-    packages: "./..."
+    packages: "./internal/backends/golang"
+    packages: "./internal/cmd"
     race: true
-    args: "-test.timeout=100m"
+    args: "-test.timeout=60m"
+    bracket_paths: "/bin/sh"
+    bracket_paths: "/usr/bin/sh"
+    bracket_paths: "/usr/bin/git"
+    bracket_paths: "internal"
+    assume_pure: true
+  }
+}
+invocations {
+  name: "race:leaf"
+  timeout {
+    seconds: 1800
+  }
+  go {
+    packages: "."
+    packages: "./cmd/stipulator"
+    packages: "./gen/stipulator/v1"
+    packages: "./internal/arch"
+    packages: "./internal/author"
+    packages: "./internal/backends/golang/internal/test2json"
+    packages: "./internal/bundle"
+    packages: "./internal/canon"
+    packages: "./internal/check"
+    packages: "./internal/compile"
+    packages: "./internal/corpus"
+    packages: "./internal/coverage"
+    packages: "./internal/diff"
+    packages: "./internal/facts"
+    packages: "./internal/gitfs"
+    packages: "./internal/gotool"
+    packages: "./internal/guidance"
+    packages: "./internal/impact"
+    packages: "./internal/mcpserver"
+    packages: "./internal/policy"
+    packages: "./internal/profile"
+    packages: "./internal/progress"
+    packages: "./internal/proptest"
+    packages: "./internal/prune"
+    packages: "./internal/prunetest"
+    packages: "./internal/recordapply"
+    packages: "./internal/recordfile"
+    packages: "./internal/records"
+    packages: "./internal/recordstore"
+    packages: "./internal/remedy"
+    packages: "./internal/resident"
+    packages: "./internal/resolutioncache"
+    packages: "./internal/shapecorpus"
+    packages: "./internal/shortgates"
+    packages: "./internal/testenv"
+    packages: "./internal/toolversion"
+    packages: "./internal/trace"
+    packages: "./internal/verbcore"
+    packages: "./internal/verify"
+    packages: "./internal/verifyrun"
+    packages: "./internal/views"
+    packages: "./internal/wire"
+    packages: "./internal/witnesscache"
+    race: true
+    args: "-test.timeout=15m"
     bracket_paths: "/bin/sh"
     bracket_paths: "/usr/bin/sh"
     bracket_paths: "/usr/bin/git"

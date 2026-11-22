@@ -317,7 +317,7 @@ func revalidateServed(ctx context.Context, wg *witnessGroup, pkg string) ([]gofr
 			// The served record held prior evidence and now re-executes:
 			// the drift verdict's reason - movers named - is its
 			// executed-reason attribution, never a cold read.
-			wg.executedWhy[s] = executedMidRunDrift.with(checked.Verdict.Reason)
+			wg.executedWhy[s] = executedMidRunDrift.with(verdictReasonWithMovers(checked.Verdict.Reason, checked.MovedInputs))
 			continue
 		}
 		// A carve-out-served record that survived post-run revalidation
@@ -551,8 +551,8 @@ func consumeMergeFailuresOnly(tr *verify.TestRun, m *execMerge, ranTop map[strin
 // witness-evidence view: failed and skipped results are recorded
 // regardless — red is a fact whatever produced it — while a pass grants
 // an outcome only from a process whose own disposition is healthy, so a
-// completed pass inside a red process reads unwitnessed unless its
-// isolation re-run granted it solo (REQ-evidence-witness-freshness-isolation's
+// completed pass inside a red process reads unwitnessed unless a
+// healthy isolation process granted it (REQ-evidence-witness-freshness-isolation's
 // isolation sentence). When one test name carries several results the
 // worst outcome wins, so a single red occurrence is never papered over
 // by a green sibling.

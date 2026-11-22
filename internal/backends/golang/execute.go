@@ -296,112 +296,38 @@ func executeInvocationPrepared(ctx context.Context, n *NormalizedInvocation, sel
 	if len(pkgs) == 0 {
 		return nil, nil, nil, nil, fmt.Errorf("invocation %q: selection carries no package obligations", n.Name)
 	}
-	// The envelope carries its identity as the context cause: the kill path
-	// dumps and graces only on true envelope expiry, never on a caller's
-	// own deadline — a caller-bounded run is discarded whole, so a dump
-	// there would have no consumer and the grace would only delay the
-	// abort.
-	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
-	defer cancel()
-	var (
-		mu       sync.Mutex
-		firstErr error
-		units    = make([]packageUnit, len(pkgs))
-		spawn    = spawnOrdinals()
-	)
-	defer func() {
-		for i := range units {
-			for j := range units[i].solos {
-				units[i].solos[j].attempt.release()
+	runs, _, timedOut, err := executePackageUnits(ctx, n, pkgs, packageUnitsConfig{
+		proofs:              proofs,
+		skipCloseOnPriorErr: true,
+		onPackage:           onPackage,
+		followups: func(ctx, invCtx context.Context, unit *packageUnit, gate *admission, spawn func() int32) error {
+			if onPackage == nil || unit.run.producer == nil || unit.run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+				return nil
 			}
-		}
-	}()
-	inSlot := func(i int, run *packageRun, gate *admission) {
-		unit := packageUnit{pkg: pkgs[i], run: *run}
-		defer func() { mu.Lock(); units[i] = unit; mu.Unlock() }()
-		if err := finalizeRun(n, &unit.run, invCtx.Err() != nil, ""); err != nil {
-			mu.Lock()
-			if firstErr == nil {
-				firstErr = err
+			leg := proofs[unit.pkg]
+			if leg == nil || leg.view == nil || leg.view.roster == nil || !leg.view.hasSoloInPackage(unit.pkg) {
+				return nil
 			}
-			mu.Unlock()
-			return
-		}
-		*run = unit.run
-		if onPackage == nil || unit.run.producer == nil || unit.run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
-			return
-		}
-		leg := proofs[unit.pkg]
-		if leg == nil || leg.view == nil || leg.view.roster == nil || !leg.view.hasSoloInPackage(unit.pkg) {
-			return
-		}
-		invPkg := leg.view.roster.packages[unit.pkg]
-		if len(invPkg.runnables) <= 1 {
-			return
-		}
-		for _, ob := range invPkg.runnables {
-			if !leg.view.isSolo(gofresh.Subject{Package: unit.pkg, Symbol: ob.Name}) {
-				continue
+			invPkg := leg.view.roster.packages[unit.pkg]
+			if len(invPkg.runnables) <= 1 {
+				return nil
 			}
-			if invCtx.Err() != nil || ctx.Err() != nil {
-				return
-			}
-			solo := runNativePackage(ctx, invCtx, n, unit.pkg, []string{ob.Name}, spawn(), gate, leg, unit.run.execution)
-			solo.soloTest = ob.Name
-			if ctx.Err() != nil {
-				pt := solo.buildTimingDiagnostic(n.Name, true)
-				progress.FromContext(ctx).RecordPackageTiming(pt)
-				unit.solos = append(unit.solos, solo)
-				return
-			}
-			if err := finalizeRun(n, &solo, invCtx.Err() != nil, ob.Name); err != nil {
-				unit.solos = append(unit.solos, solo)
-				mu.Lock()
-				if firstErr == nil {
-					firstErr = err
+			for _, ob := range invPkg.runnables {
+				if !leg.view.isSolo(gofresh.Subject{Package: unit.pkg, Symbol: ob.Name}) {
+					continue
 				}
-				mu.Unlock()
-				return
+				stopped, err := runFollowupAttempt(ctx, invCtx, n, unit.pkg, []string{ob.Name}, ob.Name, true, spawn, gate, leg, unit.run.execution, unit)
+				if stopped || err != nil {
+					return err
+				}
 			}
-			pt := solo.buildTimingDiagnostic(n.Name, false)
-			progress.FromContext(ctx).RecordPackageTiming(pt)
-			unit.solos = append(unit.solos, solo)
-		}
-	}
-	afterSlot := func(i int, run *packageRun) {
-		mu.Lock()
-		defer mu.Unlock()
-		if firstErr != nil {
-			return
-		}
-		if beforePackagePublishForTest != nil {
-			beforePackagePublishForTest(run.pkg)
-		}
-		finishNativeRun(ctx, run)
-		unit := units[i]
-		unit.run = *run
-		for j := range unit.solos {
-			finishNativeRun(ctx, &unit.solos[j])
-		}
-		units[i] = unit
-		if onPackage == nil {
-			return
-		}
-		if err := onPackage(unit); err != nil {
-			firstErr = err
-		}
-	}
-	runs := runSelectedPackages(ctx, invCtx, n, pkgs, nil, spawn, inSlot, afterSlot, proofs)
-	if err := ctx.Err(); err != nil {
-		// Caller cancellation: the partial run is discarded whole. The
-		// envelope context is derived from ctx, so every child is already
-		// terminated through its owned process boundary.
+			return nil
+		},
+	})
+	if err != nil {
 		return nil, nil, nil, nil, err
 	}
-	if firstErr != nil {
-		return nil, nil, nil, nil, firstErr
-	}
-	return assembleInvocation(n, runs, invCtx.Err() != nil)
+	return assembleInvocation(n, runs, timedOut)
 }
 
 // spawnOrdinals issues process spawn ordinals, unique within one

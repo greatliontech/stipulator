@@ -5,12 +5,9 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
-	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/trace"
 )
 
@@ -21,11 +18,13 @@ import (
 // adds over plain package execution is the isolation pass: a selective process
 // can deny its sibling tests an outcome — a package abort shadows tests that
 // never reached a terminal event, and a red process yields no green evidence
-// for the passes that completed inside it — so each denied test is re-run
-// solo, one top-level runnable per process, once, inside the same invocation
-// envelope. The isolated outcome is a real run's outcome from its own
-// producing process (REQ-evidence-witness-freshness-isolation,
-// REQ-policy-attribution); the denying process's own failures stand untouched.
+// for the passes that completed inside it — so denied tests are isolated inside
+// the same invocation envelope (trying one reduced batch of multiple
+// batch-eligible passes after a clean top-level test failure before falling
+// back to one top-level runnable per process). Each isolated outcome is a real
+// run's outcome from its own producing process
+// (REQ-evidence-witness-freshness-isolation, REQ-policy-attribution); the
+// denying process's own failures stand untouched.
 
 // TestSelection narrows an execution to named top-level runnables per
 // package: each key is a package import path, its value the top-level
@@ -36,8 +35,9 @@ type TestSelection map[string][]string
 
 // ProcessOutcome is one process of a selective execution: which package
 // it ran, the single runnable it isolated (empty for a package-selection
-// process), its terminal disposition, and its producer identity — nil
-// exactly when the envelope denied the process before it spawned.
+// or reduced-batch isolation process), its terminal disposition, and its
+// producer identity — nil exactly when the envelope denied the process
+// before it spawned.
 type ProcessOutcome struct {
 	Package     string
 	Test        string
@@ -48,8 +48,8 @@ type ProcessOutcome struct {
 // SelectionResult is one witness-only selective execution's report:
 // named test outcomes and failure diagnostics attributed to their
 // producing processes, one owned observation per launched process, and
-// every process's terminal disposition — package-selection processes
-// first in package order, then solo isolation processes in re-run order.
+// every process's terminal disposition — each package's initial process
+// followed by its isolation processes in execution order.
 // It deliberately carries no invocation health: a selective execution
 // grants witness evidence and never any health (REQ-core-one-execution),
 // so consumers key on per-process dispositions, not a suite verdict.
@@ -65,12 +65,13 @@ type SelectionResult struct {
 // invocation: the selected packages, each narrowed to its top-level
 // runnables, one owned retained test process per package under the
 // invocation's reviewed envelope timeout, followed by the isolation pass
-// — every test a red or aborted process denied an outcome is re-run
-// solo, once, inside the same envelope context, so retries can never
-// outlive the invocation's reviewed bound. Solo outcomes join the report
-// attributed to their own producing process. Caller cancellation
-// discards the partial run: the return is (nil, ctx.Err()), never a
-// partial report (REQ-policy-cancellation). Envelope expiry is a
+// — tests a red or aborted process denied an outcome are isolated inside
+// the same envelope context (one reduced batch when multiple batch-eligible
+// tests were denied by a clean top-level failure, else solo per test), so
+// retries can never outlive the invocation's reviewed bound. Isolated
+// outcomes join the report attributed to their own producing process.
+// Caller cancellation discards the partial run: the return is (nil, ctx.Err()),
+// never a partial report (REQ-policy-cancellation). Envelope expiry is a
 // terminal fact: cut-off processes and re-runs the expired envelope
 // denied are reported as TIMEOUT process outcomes, never retried
 // outside it.
@@ -119,6 +120,46 @@ func ExecuteSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	return executeSelectionObserved(ctx, n, sel, onPackage, legs, spawnOrdinals())
 }
 
+func partitionSelectionBatch(n *NormalizedInvocation, leg *packageLeg, pkg string, names []string) (batch, solos []string) {
+	if leg == nil || leg.view == nil || len(names) <= 1 {
+		return names, nil
+	}
+	view := leg.view
+	var fuzzes []string
+	for _, name := range names {
+		switch {
+		case view.isSolo(gofresh.Subject{Package: pkg, Symbol: name}):
+			solos = append(solos, name)
+		case strings.HasPrefix(name, "Fuzz"):
+			fuzzes = append(fuzzes, name)
+		default:
+			batch = append(batch, name)
+		}
+	}
+	if !n.AssumePure && len(batch) > 0 && len(fuzzes) > 0 {
+		solos = append(solos, fuzzes...)
+	} else {
+		batch = append(batch, fuzzes...)
+	}
+	return batch, solos
+}
+
+func hasFailedTopLevel(r *packageRun) bool {
+	for _, tr := range r.tests {
+		if tr.GetTest() == topLevel(tr.GetTest()) && tr.GetOutcome() == stipulatorv1.TestOutcome_TEST_OUTCOME_FAILED {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldRetryReducedBatch(r *packageRun, batchDenied []string) bool {
+	return len(batchDenied) >= 2 &&
+		r.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_TEST_FAILED &&
+		len(r.aborted) == 0 &&
+		hasFailedTopLevel(r)
+}
+
 func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel TestSelection, onPackage func(unit packageUnit) error, proofs map[string]*packageLeg, spawn func() int32) (*SelectionResult, error) {
 	pkgs := make([]string, 0, len(sel))
 	for pkg := range sel {
@@ -128,29 +169,6 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	if len(pkgs) == 0 {
 		return nil, fmt.Errorf("invocation %q: selection names no packages", n.Name)
 	}
-	// The envelope carries its identity as the context cause exactly as in
-	// ExecuteInvocation: kill-path dump and grace only on true envelope
-	// expiry, never on a caller's own deadline.
-	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
-	defer cancel()
-	units := make([]packageUnit, len(pkgs))
-	defer func() {
-		for i := range units {
-			units[i].run.attempt.release()
-			for j := range units[i].solos {
-				units[i].solos[j].attempt.release()
-			}
-		}
-	}()
-	var (
-		mu       sync.Mutex
-		firstErr error
-	)
-	fail := func(err error) {
-		if firstErr == nil {
-			firstErr = err
-		}
-	}
 	// When a package selection mixes Test* and Fuzz* runnables under a
 	// native witness snapshot, or contains subjects partitioned into solo
 	// SingleSubjectExecution, run those targets as solo processes in the
@@ -159,78 +177,76 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 	plannedSolos := map[string][]string{}
 	for _, pkg := range pkgs {
 		names := sel[pkg]
-		if proofs != nil && proofs[pkg] != nil && proofs[pkg].view != nil && len(names) > 1 {
-			view := proofs[pkg].view
-			var batch, fuzzes, solos []string
-			for _, name := range names {
-				switch {
-				case view.isSolo(gofresh.Subject{Package: pkg, Symbol: name}):
-					solos = append(solos, name)
-				case strings.HasPrefix(name, "Fuzz"):
-					fuzzes = append(fuzzes, name)
-				default:
-					batch = append(batch, name)
-				}
-			}
-			if !n.AssumePure && len(batch) > 0 && len(fuzzes) > 0 {
-				solos = append(solos, fuzzes...)
+		var leg *packageLeg
+		if proofs != nil {
+			leg = proofs[pkg]
+		}
+		batch, solos := partitionSelectionBatch(n, leg, pkg, names)
+		if len(solos) > 0 {
+			if len(batch) > 0 {
+				mainSel[pkg] = batch
+				plannedSolos[pkg] = solos
 			} else {
-				batch = append(batch, fuzzes...)
+				mainSel[pkg] = solos[:1]
+				plannedSolos[pkg] = solos[1:]
 			}
-			if len(solos) > 0 {
-				if len(batch) > 0 {
-					mainSel[pkg] = batch
-					plannedSolos[pkg] = solos
-				} else {
-					mainSel[pkg] = solos[:1]
-					plannedSolos[pkg] = solos[1:]
-				}
-				if trace.AnyEnabled() {
-					for _, name := range plannedSolos[pkg] {
-						cause := "solo_subject"
-						if !view.isSolo(gofresh.Subject{Package: pkg, Symbol: name}) && strings.HasPrefix(name, "Fuzz") {
-							cause = "mixed_fuzz"
-						}
-						trace.Emit(ctx, trace.DomainWitness, "solo_plan", pkg+"."+name,
-							trace.String("invocation", n.Name),
-							trace.String("mode", "planned"),
-							trace.String("cause", cause),
-						)
+			if trace.AnyEnabled() {
+				for _, name := range plannedSolos[pkg] {
+					cause := "solo_subject"
+					if !leg.view.isSolo(gofresh.Subject{Package: pkg, Symbol: name}) && strings.HasPrefix(name, "Fuzz") {
+						cause = "mixed_fuzz"
 					}
+					trace.Emit(ctx, trace.DomainWitness, "solo_plan", pkg+"."+name,
+						trace.String("invocation", n.Name),
+						trace.String("mode", "planned"),
+						trace.String("cause", cause),
+					)
 				}
-				continue
 			}
+			continue
 		}
 		mainSel[pkg] = names
 	}
-	// Inside the package's own slot: its classification, then the
-	// isolation re-runs of the tests its process denied an outcome —
-	// each solo, once, inside the same envelope, so an expired envelope
-	// denies a re-run before it spawns (reported as a TIMEOUT process
-	// outcome) and retries never outlive the invocation's reviewed
-	// bound. The unit of persistence is the package with its re-runs,
-	// complete before the next package needs it
-	// (REQ-policy-cancellation-unit); the caller's hook follows once the
-	// slot is released.
-	inSlot := func(i int, run *packageRun, gate *admission) {
-		unit := packageUnit{pkg: pkgs[i], run: *run}
-		defer func() { mu.Lock(); units[i] = unit; mu.Unlock() }()
-		timedOut := invCtx.Err() != nil
-		if err := finalizeRun(n, &unit.run, timedOut, ""); err != nil {
-			mu.Lock()
-			fail(err)
-			units[i] = unit
-			mu.Unlock()
-			return
-		}
-		// A package whose process never ran — refused at admission,
-		// degraded at the spawn, never spawned — has no outcome to
-		// isolate: its re-runs would be the spawns the refusal exists to
-		// withhold, and would grant outcomes a refused package never
-		// earned.
-		var denied []string
-		if unit.run.producer != nil {
-			denied = deniedTests(&unit.run, mainSel[unit.pkg])
+	_, units, _, err := executePackageUnits(ctx, n, pkgs, packageUnitsConfig{
+		tests:     mainSel,
+		proofs:    proofs,
+		spawn:     spawn,
+		onPackage: onPackage,
+		followups: func(ctx, invCtx context.Context, unit *packageUnit, gate *admission, spawn func() int32) error {
+			// A package whose process never ran — refused at admission,
+			// degraded at the spawn, never spawned — has no outcome to
+			// isolate: its re-runs would be the spawns the refusal exists to
+			// withhold, and would grant outcomes a refused package never
+			// earned.
+			if unit.run.producer == nil {
+				return nil
+			}
+			var leg *packageLeg
+			if proofs != nil {
+				leg = proofs[unit.pkg]
+			}
+			denied := deniedTests(&unit.run, mainSel[unit.pkg])
+			batchDenied, soloDenied := partitionSelectionBatch(n, leg, unit.pkg, denied)
+			if shouldRetryReducedBatch(&unit.run, batchDenied) && invCtx.Err() == nil && ctx.Err() == nil {
+				if trace.AnyEnabled() {
+					trace.Emit(ctx, trace.DomainWitness, "reduced_batch_plan", unit.pkg,
+						trace.String("invocation", n.Name),
+						trace.Int("subjects", len(batchDenied)),
+						trace.String("cause", unit.run.disposition.String()),
+					)
+				}
+				stopped, err := runFollowupAttempt(ctx, invCtx, n, unit.pkg, batchDenied, "", false, spawn, gate, leg, unit.run.execution, unit)
+				if stopped || err != nil {
+					return err
+				}
+				reduced := &unit.solos[len(unit.solos)-1]
+				if reduced.disposition == stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY {
+					denied = soloDenied
+				} else {
+					denied = append(deniedTests(reduced, batchDenied), soloDenied...)
+					sort.Strings(denied)
+				}
+			}
 			if trace.AnyEnabled() {
 				for _, name := range denied {
 					trace.Emit(ctx, trace.DomainWitness, "solo_plan", unit.pkg+"."+name,
@@ -243,70 +259,17 @@ func executeSelectionObserved(ctx context.Context, n *NormalizedInvocation, sel 
 			if unit.run.disposition != stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_BUILD_FAILED {
 				denied = append(denied, plannedSolos[unit.pkg]...)
 			}
-		}
-		for _, name := range denied {
-			solo := packageRun{pkg: unit.pkg, soloTest: name}
-			if invCtx.Err() == nil {
-				// The re-run spawns inside the package's slot and under
-				// its gate: registered at its spawn, reaped with its
-				// peak (REQ-evidence-admission-origin).
-				soloStart := time.Now()
-				solo = runNativePackage(ctx, invCtx, n, unit.pkg, []string{name}, spawn(), gate, proofs[unit.pkg], unit.run.execution)
-				solo.soloTest = name
-				if trace.AnyEnabled() {
-					trace.Emit(ctx, trace.DomainWitness, "solo_exec", unit.pkg+"."+name,
-						trace.String("invocation", n.Name),
-						trace.String("disposition", solo.disposition.String()),
-						trace.Int64("binary_ms", solo.binaryElapsed.Milliseconds()),
-						trace.Int64("duration_ms", time.Since(soloStart).Milliseconds()),
-					)
+			for _, name := range denied {
+				stopped, err := runFollowupAttempt(ctx, invCtx, n, unit.pkg, []string{name}, name, false, spawn, gate, leg, unit.run.execution, unit)
+				if stopped || err != nil {
+					return err
 				}
 			}
-			if ctx.Err() != nil {
-				pt := solo.buildTimingDiagnostic(n.Name, true)
-				progress.FromContext(ctx).RecordPackageTiming(pt)
-				unit.solos = append(unit.solos, solo)
-				return
-			}
-			if err := finalizeRun(n, &solo, invCtx.Err() != nil, name); err != nil {
-				unit.solos = append(unit.solos, solo)
-				mu.Lock()
-				fail(err)
-				units[i] = unit
-				mu.Unlock()
-				return
-			}
-			pt := solo.buildTimingDiagnostic(n.Name, false)
-			progress.FromContext(ctx).RecordPackageTiming(pt)
-			unit.solos = append(unit.solos, solo)
-		}
-		mu.Lock()
-		defer mu.Unlock()
-		units[i] = unit
-	}
-	afterSlot := func(i int, _ *packageRun) {
-		mu.Lock()
-		defer mu.Unlock()
-		if beforePackagePublishForTest != nil {
-			beforePackagePublishForTest(units[i].pkg)
-		}
-		finishNativeRun(ctx, &units[i].run)
-		for j := range units[i].solos {
-			finishNativeRun(ctx, &units[i].solos[j])
-		}
-		if onPackage != nil && firstErr == nil {
-			if err := onPackage(units[i]); err != nil {
-				fail(err)
-			}
-		}
-	}
-	runSelectedPackages(ctx, invCtx, n, pkgs, mainSel, spawn, inSlot, afterSlot, proofs)
-	if err := ctx.Err(); err != nil {
-		// Caller cancellation: the partial run is discarded whole.
+			return nil
+		},
+	})
+	if err != nil {
 		return nil, err
-	}
-	if firstErr != nil {
-		return nil, firstErr
 	}
 	res := &SelectionResult{}
 	for _, u := range units {

@@ -138,7 +138,7 @@ func collectRetryCandidates(wg *witnessGroup, unit packageUnit, merge *execMerge
 				reasons[subject] = reason
 				continue
 			}
-			if run.obs == nil || run.obs.closeErr != nil {
+			if run.obs == nil || run.obs.closeErr != nil || run.obs.Wire.GetCompleted() == nil {
 				continue
 			}
 			for _, final := range run.obs.final.Subjects {
@@ -345,6 +345,7 @@ func recheckRetryWave(ctx context.Context, pc *Capture, groups []*witnessGroup, 
 						verdict := gofresh.Verdict{}
 						if err == nil {
 							verdict = results[i].Verdict
+							verdict.Reason = verdictReasonWithMovers(verdict.Reason, results[i].MovedInputs)
 						}
 						refuse(entry, verdict, err)
 					}

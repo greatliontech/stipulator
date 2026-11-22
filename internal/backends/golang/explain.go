@@ -25,7 +25,13 @@ func ExplainDynamicState(ctx context.Context, pc *Capture, pkgPath, varName stri
 	if err != nil {
 		return gofresh.Chain{}, "", err
 	}
+	defer func() {
+		for _, g := range d.groups {
+			g.sessionState = nil
+		}
+	}()
 	for g, subjects := range d.populatedGroups() {
+		g.sessionState = &groupSessionState{}
 		session, err := groupEngine(ctx, dir, g)
 		if err != nil {
 			return gofresh.Chain{}, "", err

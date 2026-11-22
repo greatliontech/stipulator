@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -903,6 +904,13 @@ func TestServedRecordRevalidatesAfterTheRunsExecutions(t *testing.T) {
 		t.Skip("executes race-instrumented selective runs over a temporary module")
 	}
 	neutralAmbient(t)
+	// The writer barrier waits for the reader package to persist concurrently;
+	// ensure at least 4 processors so witnessSpawnBound allocates 2 slots even
+	// when the outer test binary runs under narrow GOMAXPROCS.
+	procs := max(4, runtime.GOMAXPROCS(0))
+	prevProcs := runtime.GOMAXPROCS(procs)
+	t.Cleanup(func() { runtime.GOMAXPROCS(prevProcs) })
+	t.Setenv("GOMAXPROCS", strconv.Itoa(procs))
 	tmp := writeModule(t, map[string]string{
 		"go.mod":           "module example.com/sibserve\n\ngo 1.26\n",
 		"reader/data.txt":  "v1\n",

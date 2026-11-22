@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	gofresh "github.com/greatliontech/gofresh"
 	stipulatorv1 "github.com/greatliontech/stipulator/gen/stipulator/v1"
+	"github.com/greatliontech/stipulator/internal/progress"
 	"github.com/greatliontech/stipulator/internal/trace"
 )
 
@@ -53,6 +55,158 @@ func (a *nativeAttempt) release() {
 	}
 }
 
+func releasePackageUnits(units []packageUnit) {
+	for i := range units {
+		units[i].run.attempt.release()
+		for j := range units[i].solos {
+			units[i].solos[j].attempt.release()
+		}
+	}
+}
+
+type packageUnitsConfig struct {
+	tests               TestSelection
+	proofs              map[string]*packageLeg
+	spawn               func() int32
+	skipCloseOnPriorErr bool
+	followups           func(ctx, invCtx context.Context, unit *packageUnit, gate *admission, spawn func() int32) error
+	onPackage           func(unit packageUnit) error
+}
+
+// executePackageUnits is the shared package-slot lifecycle for both
+// health-judged invocation execution and witness-only selective execution.
+// Processes and in-slot follow-up attempts run under invCtx while holding the
+// admission slot; native closing runs outside the slot under ctx, parallelized
+// across packages unless beforePackagePublishForTest is active, with onPackage
+// serialized under mu (REQ-policy-cancellation-publication-slot).
+func executePackageUnits(ctx context.Context, n *NormalizedInvocation, pkgs []string, cfg packageUnitsConfig) ([]packageRun, []packageUnit, bool, error) {
+	invCtx, cancel := context.WithTimeoutCause(ctx, n.Timeout, errEnvelopeExpired)
+	defer cancel()
+	spawn := cfg.spawn
+	if spawn == nil {
+		spawn = spawnOrdinals()
+	}
+	var (
+		mu       sync.Mutex
+		firstErr error
+		units    = make([]packageUnit, len(pkgs))
+	)
+	defer releasePackageUnits(units)
+	recordErr := func(err error) {
+		mu.Lock()
+		if firstErr == nil {
+			firstErr = err
+		}
+		mu.Unlock()
+	}
+	inSlot := func(i int, run *packageRun, gate *admission) {
+		unit := packageUnit{pkg: pkgs[i], run: *run}
+		defer func() { units[i] = unit }()
+		if err := finalizeRun(n, &unit.run, invCtx.Err() != nil, ""); err != nil {
+			recordErr(err)
+			return
+		}
+		*run = unit.run
+		if cfg.followups != nil {
+			if err := cfg.followups(ctx, invCtx, &unit, gate, spawn); err != nil {
+				recordErr(err)
+				return
+			}
+		}
+	}
+	afterSlot := func(i int, run *packageRun) {
+		mu.Lock()
+		failed := firstErr != nil
+		hasPublishHook := beforePackagePublishForTest != nil
+		mu.Unlock()
+		if failed && cfg.skipCloseOnPriorErr {
+			return
+		}
+		finalize := func() {
+			finishNativeRun(ctx, &units[i].run)
+			for j := range units[i].solos {
+				finishNativeRun(ctx, &units[i].solos[j])
+			}
+			*run = units[i].run
+		}
+		if hasPublishHook {
+			mu.Lock()
+			defer mu.Unlock()
+			if firstErr != nil && cfg.skipCloseOnPriorErr {
+				return
+			}
+			beforePackagePublishForTest(units[i].pkg)
+			finalize()
+			if cfg.onPackage != nil && firstErr == nil {
+				if err := cfg.onPackage(units[i]); err != nil {
+					firstErr = err
+				}
+			}
+			return
+		}
+		finalize()
+		if cfg.onPackage == nil {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if firstErr == nil {
+			if err := cfg.onPackage(units[i]); err != nil {
+				firstErr = err
+			}
+		}
+	}
+	runs := runSelectedPackages(ctx, invCtx, n, pkgs, cfg.tests, spawn, inSlot, afterSlot, cfg.proofs)
+	if err := ctx.Err(); err != nil {
+		return nil, nil, false, err
+	}
+	if firstErr != nil {
+		return nil, nil, false, firstErr
+	}
+	return runs, units, invCtx.Err() != nil, nil
+}
+
+func runFollowupAttempt(ctx, invCtx context.Context, n *NormalizedInvocation, pkg string, selection []string, soloTest string, requireLiveEnvelope bool, spawn func() int32, gate *admission, leg *packageLeg, execution *packageExecution, unit *packageUnit) (bool, error) {
+	if requireLiveEnvelope && (invCtx.Err() != nil || ctx.Err() != nil) {
+		return true, nil
+	}
+	attempt := packageRun{pkg: pkg, soloTest: soloTest}
+	if invCtx.Err() == nil {
+		start := time.Now()
+		attempt = runNativePackage(ctx, invCtx, n, pkg, selection, spawn(), gate, leg, execution)
+		attempt.soloTest = soloTest
+		if !requireLiveEnvelope && trace.AnyEnabled() {
+			target := pkg
+			event := "reduced_batch_exec"
+			if soloTest != "" {
+				target = pkg + "." + soloTest
+				event = "solo_exec"
+			}
+			trace.Emit(ctx, trace.DomainWitness, event, target,
+				trace.String("invocation", n.Name),
+				trace.Int("selection", len(selection)),
+				trace.String("disposition", attempt.disposition.String()),
+				trace.Int64("binary_ms", attempt.binaryElapsed.Milliseconds()),
+				trace.Int64("duration_ms", time.Since(start).Milliseconds()),
+			)
+		}
+	}
+	if ctx.Err() != nil {
+		pt := attempt.buildTimingDiagnostic(n.Name, true)
+		progress.FromContext(ctx).RecordPackageTiming(pt)
+		unit.solos = append(unit.solos, attempt)
+		return true, nil
+	}
+	if err := finalizeRun(n, &attempt, invCtx.Err() != nil, soloTest); err != nil {
+		unit.solos = append(unit.solos, attempt)
+		return true, err
+	}
+	pt := attempt.buildTimingDiagnostic(n.Name, false)
+	progress.FromContext(ctx).RecordPackageTiming(pt)
+	unit.solos = append(unit.solos, attempt)
+	return false, nil
+}
+
 // finishNativeRun closes after the process slot is released, under the caller's
 // context rather than the execution envelope. Captures and artifacts remain
 // owned until closing finishes; an earlier completed process does not become a
@@ -87,9 +241,15 @@ func finishNativeRun(ctx context.Context, run *packageRun) {
 	if run.soloTest != "" {
 		target = run.pkg + "." + run.soloTest
 	}
+	movedInputs := 0
+	var spanErr *gofresh.RuntimeInputSpanError
+	if errors.As(err, &spanErr) {
+		movedInputs = len(spanErr.MovedInputs)
+	}
 	trace.Emit(ctx, trace.DomainWitness, "finish_native_run", target,
 		trace.Bool("solo", run.soloTest != ""),
 		trace.Int("subjects", len(final.Subjects)),
+		trace.Int("moved_inputs", movedInputs),
 		trace.Int64("duration_ms", time.Since(finStart).Milliseconds()),
 		trace.Err(err),
 	)
@@ -139,6 +299,7 @@ func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg 
 		return packageRun{pkg: pkg, noTestFiles: true, disposition: stipulatorv1.HealthDisposition_HEALTH_DISPOSITION_HEALTHY}
 	}
 	logPath := ""
+	var logErr error
 	attempt := &nativeAttempt{leg: leg}
 	retained := false
 	defer func() {
@@ -146,10 +307,19 @@ func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg 
 			attempt.release()
 		}
 	}()
-	if f, err := os.CreateTemp("", "stipulator-testlog-*.txt"); err == nil {
-		logPath = f.Name()
-		_ = f.Close()
-		attempt.logPath = logPath
+	if leg != nil {
+		if f, err := os.CreateTemp("", "stipulator-testlog-*.txt"); err != nil {
+			logErr = err
+		} else {
+			logPath = f.Name()
+			if closeErr := f.Close(); closeErr != nil {
+				_ = os.Remove(logPath)
+				logPath = ""
+				logErr = closeErr
+			} else {
+				attempt.logPath = logPath
+			}
+		}
 	}
 	var environment *retainedEnvironment
 	if execution.attempts == 0 && leg != nil {
@@ -186,7 +356,16 @@ func runNativePackage(caller, ctx context.Context, n *NormalizedInvocation, pkg 
 	producer.SetInvocation(n.Name)
 	producer.SetProcessOrdinal(ordinal)
 	prepStart := time.Now()
-	unit, contribution, prepErr := prepareNativeAttempt(ctx, n, pkg, leg, built.Artifact, runtime, logPath, producer)
+	var (
+		unit         *gofresh.Unit
+		contribution gofresh.Contribution
+		prepErr      error
+	)
+	if logErr != nil {
+		prepErr = fmt.Errorf("creating testlog capture: %w", logErr)
+	} else {
+		unit, contribution, prepErr = prepareNativeAttempt(ctx, n, pkg, leg, built.Artifact, runtime, logPath, producer)
+	}
 	prepElapsed := time.Since(prepStart)
 	attempt.unit, attempt.err = unit, prepErr
 	binStart := time.Now()
@@ -242,6 +421,9 @@ func prepareNativeAttempt(ctx context.Context, n *NormalizedInvocation, pkg stri
 		}
 		return nil, gofresh.Contribution{}, fmt.Errorf("package has no native snapshot")
 	}
+	if logPath == "" {
+		return nil, gofresh.Contribution{}, errors.New("witnessed native attempt requires a testlog capture path")
+	}
 	leg.preparation.Lock()
 	defer leg.preparation.Unlock()
 	if leg.view == nil {
@@ -285,14 +467,30 @@ func prepareNativeAttempt(ctx context.Context, n *NormalizedInvocation, pkg stri
 	if err != nil {
 		return nil, gofresh.Contribution{}, err
 	}
-	unit, err := binding.BeginPackage(subjects)
+	var unit *gofresh.Unit
+	if len(subjects) == 1 {
+		unit, err = binding.Begin(subjects[0])
+	} else {
+		unit, err = binding.BeginPackage(subjects)
+	}
 	if err != nil {
 		return nil, gofresh.Contribution{}, err
 	}
 	contribution, err := unit.Register(ctx, build, gofresh.ProcessDescription{
 		Identity: processIdentity(n, producer, pkg), Capture: logPath,
-		BracketPaths: brackets, ExcludedPaths: runnerExcludedPaths(n, artifact, runtime), ScratchNamespaces: n.ScratchNamespaces,
+		BracketPaths: brackets, ExcludedPaths: runnerExcludedPaths(n, artifact, runtime),
+		ScratchNamespaces: n.ScratchNamespaces,
 	})
+	if trace.AnyEnabled() {
+		needsObservation, _ := binding.NeedsObservation(subjects)
+		trace.Emit(ctx, trace.DomainWitness, "prepare_native_attempt", pkg,
+			trace.String("invocation", n.Name),
+			trace.Int("subjects", len(subjects)),
+			trace.Bool("single_subject", len(subjects) == 1),
+			trace.Bool("needs_observation", needsObservation),
+			trace.Err(err),
+		)
+	}
 	return unit, contribution, err
 }
 

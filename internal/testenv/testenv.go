@@ -6,6 +6,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 
@@ -51,10 +52,27 @@ func IsolateMain(m *testing.M) int {
 // non-nil) before the test harness starts testlog capture, and returns m.Run()'s
 // exit code.
 func RunMain(m *testing.M, beforeRun func()) int {
+	isolated := os.Getenv("STIPULATOR_TESTENV_ISOLATED") != ""
+	if !isolated {
+		if goroot := runtime.GOROOT(); goroot != "" {
+			goBin := filepath.Join(goroot, "bin")
+			if info, err := os.Stat(goBin); err == nil && info.IsDir() {
+				cur := os.Getenv("PATH")
+				slots := filepath.SplitList(cur)
+				if len(slots) == 0 || slots[0] != goBin {
+					if cur != "" {
+						_ = os.Setenv("PATH", goBin+string(os.PathListSeparator)+cur)
+					} else {
+						_ = os.Setenv("PATH", goBin)
+					}
+				}
+			}
+		}
+	}
 	if gocache := GoBuildCache(); gocache != "" && os.Getenv("GOCACHE") == "" {
 		_ = os.Setenv("GOCACHE", gocache)
 	}
-	if os.Getenv("STIPULATOR_TESTENV_ISOLATED") == "" {
+	if !isolated {
 		if root, err := os.MkdirTemp("", "stipulator-testcache-*"); err == nil {
 			defer os.RemoveAll(root)
 			cacheDir := filepath.Join(root, "cache")

@@ -911,7 +911,10 @@ import (
 
 var ready bool
 
-func TestSetup(t *testing.T) { ready = true }
+func TestStateRed(t *testing.T) {
+	ready = true
+	t.Fail()
+}
 
 func TestNeedsSetup(t *testing.T) {
 	if !ready {
@@ -919,7 +922,7 @@ func TestNeedsSetup(t *testing.T) {
 	}
 }
 
-func TestStateRed(t *testing.T) { t.Fail() }
+func TestSetup(t *testing.T) {}
 `,
 	})
 	cfg := &stipulatorv1.GoInvocationConfig{}

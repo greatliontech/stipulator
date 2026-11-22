@@ -5130,3 +5130,63 @@ bindings {
   role: BINDING_ROLE_IMPLEMENTS
   shape_hash: "72c17d50bd986d004e87b83b8e234031761e55963acdbc821c57df481bb294f8"
 }
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness-isolation"
+  content_hash: "c5da6439cff15e8eacd3c4d0a395fafbf12447e2e0165d78687173c99773e113"
+  source_hash: "dc7d42800e6cfaa40655a9872682a6fb96b2295d66c29305939b7bc3676d3a9d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestReducedBatchDecisionProperty"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "a823f528cb7faf4ab6ac7067a3067d241eb1ed97136e834e022c83710fdf5a9a"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness-isolation"
+  content_hash: "c5da6439cff15e8eacd3c4d0a395fafbf12447e2e0165d78687173c99773e113"
+  source_hash: "dc7d42800e6cfaa40655a9872682a6fb96b2295d66c29305939b7bc3676d3a9d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestReducedBatchIsolationRecoversCleanFailuresAndFallsBackToSolo"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7df19b2040ca0e753f708eba67b2d2cf9613cccb3877562589ac7593b5b5d3c2"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "e3cacdc48a4d512369e1d8f9ab1ca6f8b557463f4b5410dc6bec427acb7826b4"
+  source_hash: "8bd7bfed675fea5b98f2cd3b33d2395fdc337cf0cb022fe31949add0b0779295"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestReducedBatchIsolationRecoversCleanFailuresAndFallsBackToSolo"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "7df19b2040ca0e753f708eba67b2d2cf9613cccb3877562589ac7593b5b5d3c2"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness"
+  content_hash: "e3cacdc48a4d512369e1d8f9ab1ca6f8b557463f4b5410dc6bec427acb7826b4"
+  source_hash: "8bd7bfed675fea5b98f2cd3b33d2395fdc337cf0cb022fe31949add0b0779295"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestUnwitnessedAttemptOmitsTestlogAndSingleSubjectPrepTracesNeedsObservation"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "9d7eed4d17641615b277b67e7d0f9552d01689a1ef6bf82dcfe4645d40bf9554"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness-diagnosable"
+  content_hash: "beb9e2a7783935ba92132da7cbd9e0c58c96300b1b8526558a3b4224158d74d4"
+  source_hash: "fdacf7cddf5becd47671490381b2f04e193db4347dbb7705ec97ae4d8fe320c1"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.TestMovedInputsAttributionSurfacesOnCloseAndCheckingVerdicts"
+  role: BINDING_ROLE_TESTS
+  shape_hash: "be0c2199b290c5c4db2e590192b9e938ab93c06cb6570c936df73caab1bfaf34"
+}
+
+bindings {
+  requirement_id: "REQ-evidence-witness-freshness-isolation"
+  content_hash: "c5da6439cff15e8eacd3c4d0a395fafbf12447e2e0165d78687173c99773e113"
+  source_hash: "dc7d42800e6cfaa40655a9872682a6fb96b2295d66c29305939b7bc3676d3a9d"
+  backend: "go"
+  symbol: "github.com/greatliontech/stipulator/internal/backends/golang.shouldRetryReducedBatch"
+  role: BINDING_ROLE_IMPLEMENTS
+  shape_hash: "e92e8a260876db2221792b7b6c80a3d4863ea6d343053c19e8f220b9922434ed"
+}

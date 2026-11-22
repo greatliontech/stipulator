@@ -1,6 +1,8 @@
 package golang
 
 import (
+	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -37,9 +39,35 @@ var (
 	reasonNoHealthyOutcome  = reasonJudged.with("no healthy outcome for the subject")
 )
 
+func formatMovedInputsSuffix(movers []string) string {
+	if len(movers) == 0 {
+		return ""
+	}
+	const maxListed = 4
+	if len(movers) <= maxListed {
+		return " (moved: " + strings.Join(movers, ", ") + ")"
+	}
+	return fmt.Sprintf(" (moved: %s, +%d more)", strings.Join(movers[:maxListed], ", "), len(movers)-maxListed)
+}
+
+func verdictReasonWithMovers(reason string, movers []string) string {
+	if len(movers) == 0 || strings.Contains(reason, "(moved: ") {
+		return reason
+	}
+	if reason == "" {
+		reason = "runtimeinputs"
+	}
+	return reason + formatMovedInputsSuffix(movers)
+}
+
 func nativeCloseRefusal(err error) uncacheable {
 	if runtimeInputMovement(err) {
-		return reasonPostRun.with(err.Error())
+		detail := err.Error()
+		var spanErr *gofresh.RuntimeInputSpanError
+		if errors.As(err, &spanErr) && len(spanErr.MovedInputs) > 0 && !strings.Contains(detail, "(moved: ") {
+			detail += formatMovedInputsSuffix(spanErr.MovedInputs)
+		}
+		return reasonPostRun.with(detail)
 	}
 	return reasonSourceFailed.with(err.Error())
 }

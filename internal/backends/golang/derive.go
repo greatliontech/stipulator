@@ -331,7 +331,9 @@ func (r *WitnessRecorder) Close() {
 		for _, leg := range g.legs {
 			leg.dispose()
 		}
+		g.legs = nil
 		g.view = nil
+		g.sessionState = nil
 	}
 }
 
@@ -802,7 +804,6 @@ func discoverPolicy(ctx context.Context, normalized []*NormalizedInvocation, exe
 				excludedPaths:     canonicalReviewedExclusions(n.ExcludedPaths),
 				scratchNamespaces: canonicalReviewedNamespaces(n.ScratchNamespaces),
 				packages:          map[string]*groupPackage{},
-				sessionState:      &groupSessionState{},
 			}
 			byKey[key] = g
 			keys = append(keys, key)

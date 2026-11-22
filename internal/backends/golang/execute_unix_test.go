@@ -34,6 +34,9 @@ import ("testing"; "time")
 func TestHang(t *testing.T) { for { time.Sleep(time.Hour) } }
 `})
 	retainedBuildOK(t, n, "retained.test")
+	// Clear runnables so the short timeout exercises binary execution and cutoff
+	// rather than cold native RTA registration inside invCtx.
+	n.runnables = nil
 	n.Name, n.Timeout = "hang", 2*time.Second
 	selection := []Obligation{{Kind: ObligationPackage, Package: "retained.test"}}
 	health, _, diags, observations, err := ExecuteInvocation(context.Background(), n, selection)

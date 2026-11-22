@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/greatliontech/gofresh"
@@ -47,11 +48,16 @@ func TestNativeSnapshotIncludesRunnablesAddedAfterPolicyDiscovery(t *testing.T) 
 		}
 	}
 	t.Cleanup(func() { beforeGroupEngineForTest = prior })
-	var declared []gofresh.FinalizedSubject
+	var (
+		closeMu  sync.Mutex
+		declared []gofresh.FinalizedSubject
+	)
 	priorClose := closeNativeProcess
 	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		final, err := priorClose(ctx, unit)
+		closeMu.Lock()
 		declared = final.Subjects
+		closeMu.Unlock()
 		return final, err
 	}
 	t.Cleanup(func() { closeNativeProcess = priorClose })
@@ -113,13 +119,18 @@ func TestNativeDriftRetryRefreshesRunnablePopulation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "writer/w_test.go"), []byte(strings.Replace(writer, "armed = false", "armed = true", 1)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	var reader gofresh.Finalized
+	var (
+		closeMu sync.Mutex
+		reader  gofresh.Finalized
+	)
 	prior := closeNativeProcess
 	closeNativeProcess = func(ctx context.Context, unit *gofresh.Unit) (gofresh.Finalized, error) {
 		final, err := prior(ctx, unit)
 		for _, result := range final.Subjects {
 			if result.Subject.Package == "example.com/retryroster/reader" {
+				closeMu.Lock()
 				reader = final
+				closeMu.Unlock()
 				break
 			}
 		}
